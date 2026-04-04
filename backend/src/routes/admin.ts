@@ -180,4 +180,44 @@ router.delete('/staff/:id', async (req: Request, res: Response) => {
   }
 });
 
+// PATCH /api/admin/staff/:id/enable — Re-enable disabled user
+router.patch('/staff/:id/enable', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.update({
+      where: { id },
+      data: { status: 'ACTIVE' },
+      select: { id: true, email: true, name: true, role: true, status: true },
+    });
+    res.json(user);
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    console.error('Enable staff error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE /api/admin/staff/:id/permanent — Hard delete user
+router.delete('/staff/:id/permanent', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (id === req.user!.userId) {
+      res.status(400).json({ error: 'Cannot delete your own account' });
+      return;
+    }
+    await prisma.user.delete({ where: { id } });
+    res.json({ message: 'User permanently deleted' });
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    console.error('Hard delete staff error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

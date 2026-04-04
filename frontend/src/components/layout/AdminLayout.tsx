@@ -4,7 +4,9 @@ import {
   LayoutDashboard, Users, Package, Map, CreditCard,
   Clock, BarChart3, LogOut, Coffee, ChevronRight,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
+import api from '../../lib/api';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -25,6 +27,22 @@ export default function AdminLayout() {
     await logout();
     navigate('/login');
   };
+
+  const [activeSession, setActiveSession] = useState(false);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data } = await api.get('/pos-session/active');
+        setActiveSession(!!data);
+      } catch {
+        setActiveSession(false);
+      }
+    };
+    checkSession();
+    const interval = setInterval(checkSession, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen flex bg-surface-1">
@@ -54,7 +72,10 @@ export default function AdminLayout() {
               }
             >
               <item.icon className="w-4.5 h-4.5 shrink-0" />
-              <span>{item.label}</span>
+              <span className="flex-1">{item.label}</span>
+              {item.label === 'Session' && activeSession && (
+                <div className="w-2 h-2 rounded-full bg-success animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" title="Session Active" />
+              )}
             </NavLink>
           ))}
         </nav>

@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Load environment variables
 dotenv.config();
 
 // Routes
@@ -69,7 +68,7 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 
 // ─── Start Server ───────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n☕ Café POS Backend running on http://localhost:${PORT}`);
+  console.log(`\n Café POS Backend running on http://localhost:${PORT}`);
   console.log(`   Environment: ${process.env.NODE_ENV || 'development'}\n`);
 });
 

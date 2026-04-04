@@ -49,6 +49,38 @@ export default function Staff() {
     catch (err: any) { addToast('error', err.response?.data?.error || 'Failed'); }
   };
 
+  const handleRoleChange = async (id: string, newRole: string) => {
+    if (!confirm(`Change this user's access role to ${newRole}?`)) return;
+    try {
+      await api.patch(`/admin/staff/${id}/role`, { role: newRole });
+      addToast('success', 'Role updated');
+      fetchStaff();
+    } catch (err: any) {
+      addToast('error', err.response?.data?.error || 'Failed to update role');
+    }
+  };
+
+  const handleEnable = async (id: string) => {
+    try {
+      await api.patch(`/admin/staff/${id}/enable`);
+      addToast('success', 'User access restored');
+      fetchStaff();
+    } catch (err: any) {
+      addToast('error', err.response?.data?.error || 'Failed to re-enable');
+    }
+  };
+
+  const handleHardDelete = async (id: string) => {
+    if (!confirm('WARNING: Are you sure you want to PERMANENTLY delete this user? This cannot be undone.')) return;
+    try {
+      await api.delete(`/admin/staff/${id}/permanent`);
+      addToast('success', 'User permanently deleted');
+      fetchStaff();
+    } catch (err: any) {
+      addToast('error', err.response?.data?.error || 'Failed to permanently delete');
+    }
+  };
+
   if (loading) return <PageLoader />;
 
   const roleBadge = (role: string) => {
@@ -93,15 +125,45 @@ export default function Staff() {
                     <span className="text-sm font-medium text-text-primary">{s.name || '—'}</span>
                   </div></td>
                   <td className="px-6 py-4 text-sm text-text-secondary">{s.email}</td>
-                  <td className="px-6 py-4">{roleBadge(s.role)}</td>
+                  <td className="px-6 py-4">
+                    <select 
+                      value={s.role} 
+                      onChange={(e) => handleRoleChange(s.id, e.target.value)}
+                      className={`text-xs px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-brand-main font-semibold ${
+                        s.role === 'ADMIN' ? 'bg-danger-pale text-danger border-danger/20' : 
+                        s.role === 'WAITER' ? 'bg-success-pale text-success border-success/20' : 
+                        s.role === 'KITCHEN' ? 'bg-warning-pale text-warning border-warning/20' : 
+                        'bg-info-pale text-info border-info/20'
+                      }`}
+                    >
+                      <option value="ADMIN">ADMIN</option>
+                      <option value="CASHIER">CASHIER</option>
+                      <option value="KITCHEN">KITCHEN</option>
+                      <option value="WAITER">WAITER</option>
+                    </select>
+                  </td>
                   <td className="px-6 py-4">{statusBadge(s.status)}</td>
                   <td className="px-6 py-4"><div className="flex items-center gap-2">
                     {s.status === 'PENDING' && (
-                      <button onClick={() => handleResend(s.id)} className="p-1.5 rounded-lg hover:bg-surface-2 text-text-muted" title="Resend invite">
-                        <Send className="w-4 h-4" /></button>
+                      <button onClick={() => handleResend(s.id)} className="p-1.5 rounded-lg hover:bg-surface-2 text-text-muted hover:text-brand-main" title="Resend invite">
+                        <Send className="w-4 h-4" />
+                      </button>
                     )}
-                    <button onClick={() => handleDelete(s.id)} className="p-1.5 rounded-lg hover:bg-danger-pale text-text-muted hover:text-danger" title="Disable">
-                      <Trash2 className="w-4 h-4" /></button>
+                    {s.status !== 'DISABLED' && (
+                      <button onClick={() => handleDelete(s.id)} className="p-1.5 rounded-lg hover:bg-danger-pale text-text-muted hover:text-danger" title="Disable User">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    {s.status === 'DISABLED' && (
+                      <>
+                        <button onClick={() => handleEnable(s.id)} className="p-1.5 px-3 rounded-lg bg-surface-2 hover:bg-success-pale text-text-secondary hover:text-success text-xs font-semibold transition-colors" title="Re-enable Access">
+                          Enable
+                        </button>
+                        <button onClick={() => handleHardDelete(s.id)} className="p-1.5 rounded-lg bg-surface-2 hover:bg-danger-pale text-text-secondary hover:text-danger transition-colors" title="Permanently Delete">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div></td>
                 </motion.tr>
               ))}
