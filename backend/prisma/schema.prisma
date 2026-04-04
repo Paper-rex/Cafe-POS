@@ -54,6 +54,13 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum ItemStatus {
+  PENDING
+  COOKING
+  READY
+  SERVED
+}
+
 // ─── Models ─────────────────────────────────────────
 
 model User {
@@ -192,7 +199,8 @@ model OrderItem {
   variants  Json?   // Snapshot: [{name: "Size", selected: "M", extraPrice: 1000}]
   toppings  Json?   // Snapshot: [{name: "Whipped Cream", price: 500}]
   subtotal  Float
-  isDone    Boolean @default(false)
+  isDone     Boolean    @default(false)
+  itemStatus ItemStatus @default(PENDING)
 
   // Relations
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)

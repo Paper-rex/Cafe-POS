@@ -3,7 +3,7 @@ import prisma from '../lib/prisma.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
 import { sessionRequired } from '../middleware/sessionRequired.js';
-import { ORDER_STATUS_TRANSITIONS, ORDER_PREFIX } from '../lib/constants.js';
+import { ORDER_STATUS_TRANSITIONS, ITEM_STATUS_TRANSITIONS, ORDER_PREFIX } from '../lib/constants.js';
 import sseService from '../services/sse.service.js';
 import '../types/index.js';
 
@@ -203,25 +203,67 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/orders/:id/items/:itemId/done — Toggle item done
-router.patch('/:id/items/:itemId/done', authorize('KITCHEN'), async (req: Request, res: Response) => {
+// PATCH /api/orders/:id/items/status — Update item statuses
+router.patch('/:id/items/status', async (req: Request, res: Response) => {
   try {
-    const { isDone } = req.body;
+    const { itemIds, status } = req.body;
+    if (!itemIds || !Array.isArray(itemIds) || !status) {
+      res.status(400).json({ error: 'itemIds array and status are required' });
+      return;
+    }
 
-    const item = await prisma.orderItem.update({
-      where: { id: req.params.itemId },
-      data: { isDone: isDone ?? true },
+    const orderId = req.params.id;
+
+    // Check transition validity for at least one item (lazy validation, usually UI enforces this)
+    const validTransitions = Object.values(ITEM_STATUS_TRANSITIONS).flat();
+    const isAllowed = validTransitions.some(t => t.next === status && t.roles.includes(req.user!.role));
+    if (!isAllowed) {
+      res.status(403).json({ error: `Role ${req.user!.role} cannot transition to ${status}`, code: 'FORBIDDEN' });
+      return;
+    }
+
+    // Update items
+    await prisma.orderItem.updateMany({
+      where: { id: { in: itemIds }, orderId },
+      data: { itemStatus: status as any },
     });
 
-    sseService.broadcast('order:item_updated', {
-      orderId: req.params.id,
-      itemId: item.id,
-      isDone: item.isDone,
+    // Auto-compute order status
+    const allItems = await prisma.orderItem.findMany({ where: { orderId } });
+    let newOrderStatus = undefined;
+
+    const statuses = allItems.map(i => i.itemStatus);
+    const hasCooking = statuses.includes('COOKING');
+    const allServed = statuses.length > 0 && statuses.every(s => s === 'SERVED');
+    const allReadyOrServed = statuses.length > 0 && statuses.every(s => s === 'READY' || s === 'SERVED');
+
+    if (hasCooking) newOrderStatus = 'COOKING';
+    else if (allServed) newOrderStatus = 'SERVED';
+    else if (allReadyOrServed) newOrderStatus = 'READY';
+    else newOrderStatus = 'PENDING'; // Or we could keep the current logic, basically fallback
+
+    let order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (order && newOrderStatus && order.status !== newOrderStatus && !['PAYMENT_PENDING', 'PAID', 'CANCELLED'].includes(order.status)) {
+      order = await prisma.order.update({
+        where: { id: orderId },
+        data: { status: newOrderStatus as any },
+      });
+      sseService.broadcast('order:status_updated', {
+        orderId,
+        status: newOrderStatus,
+        order,
+      });
+    }
+
+    sseService.broadcast('order:items_updated', {
+      orderId,
+      itemIds,
+      status,
     });
 
-    res.json(item);
-  } catch (error: any) {
-    if (error.code === 'P2025') { res.status(404).json({ error: 'Item not found' }); return; }
+    res.json({ success: true, orderStatus: order?.status });
+  } catch (error) {
+    console.error('Update item status error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

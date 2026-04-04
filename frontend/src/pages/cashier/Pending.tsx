@@ -51,14 +51,31 @@ export default function CashierPending() {
           <div className="space-y-3">
             {payments.map((payment) => (
               <motion.div key={payment.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <Card className={`p-4 cursor-pointer transition-all ${selected?.id === payment.id ? 'ring-2 ring-brand-main' : ''}`}
-                  hover onClick={() => { setSelected(payment); setAmountTendered(''); }}>
-                  <div className="flex items-center justify-between">
+                <Card className={`p-4 transition-all ${payment.status === 'PAID' ? 'opacity-70 bg-surface-1/50' : 'cursor-pointer'} ${selected?.id === payment.id ? 'ring-2 ring-brand-main' : ''}`}
+                  hover={payment.status !== 'PAID'} onClick={() => { if(payment.status !== 'PAID') { setSelected(payment); setAmountTendered(''); } }}>
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1">{methodIcon(payment.method)}<Badge variant={payment.method === 'CASH' ? 'success' : payment.method === 'CARD' ? 'info' : 'warning'}>{payment.method}</Badge></div>
-                      <div><p className="font-mono text-sm font-bold">{payment.order?.orderNumber}</p><p className="text-xs text-text-muted">Table {(payment.order as any)?.table?.number} • {payment.order?.waiter?.name}</p></div>
+                      <div className="flex items-center gap-1">
+                        {methodIcon(payment.method)}
+                        <Badge variant={payment.method === 'CASH' ? 'success' : payment.method === 'CARD' ? 'info' : 'warning'}>{payment.method}</Badge>
+                        {payment.status === 'PAID' && <Badge variant="success">PAID</Badge>}
+                      </div>
                     </div>
-                    <div className="text-right"><p className="font-display font-bold text-text-primary">{formatCurrency(payment.amount)}</p><p className="text-xs text-text-muted">{formatDuration(payment.createdAt)} ago</p></div>
+                    <div className="text-right"><p className="font-display font-bold text-text-primary">{formatCurrency(payment.amount)}</p></div>
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <p className="font-mono text-sm font-bold">Ord {payment.order?.orderNumber}</p>
+                      <p className="text-xs text-text-muted">Table {(payment.order as any)?.table?.number} • Waiter: {payment.order?.waiter?.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-text-muted">{formatDuration(payment.createdAt)} ago</p>
+                      {payment.status === 'PAID' && payment.confirmedBy && (
+                        <p className="text-xs font-medium text-brand-dark mt-1 flex items-center gap-1 justify-end">
+                          <CheckCircle className="w-3 h-3" /> Confirmed: {payment.confirmedBy.name}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </Card>
               </motion.div>
