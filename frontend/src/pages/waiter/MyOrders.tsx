@@ -22,7 +22,11 @@ export default function MyOrders() {
   const fetchOrders = async () => {
     try { 
       const { data } = await api.get('/orders'); 
-      setOrders(data.filter((o: Order) => o.status !== 'CANCELLED' && o.status !== 'PAID')); 
+      setOrders(data.filter((o: Order | any) => {
+        if (o.status === 'CANCELLED' || o.status === 'PAID') return false;
+        if (o.status === 'PAYMENT_PENDING' && o.payment?.method === 'CASH') return false;
+        return true;
+      })); 
     } catch {} finally { setLoading(false); }
   };
   

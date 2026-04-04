@@ -1,7 +1,9 @@
 import { formatCurrency, formatDate, formatTime } from '../../lib/formatters';
 import type { Order } from '../../types';
-import { X, Printer } from 'lucide-react';
+import { X, Printer, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 interface BillModalProps {
   order: Order | null;
   onClose: () => void;
@@ -15,6 +17,56 @@ export default function BillModal({ order, onClose, onPrint }: BillModalProps) {
   const handlePrint = () => {
     window.print();
     if (onPrint) onPrint();
+  };
+
+  const handleDownload = () => {
+    const doc = new jsPDF({ format: [80, 250], unit: 'mm' }); 
+    
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cafe POS', 40, 10, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Receipt', 40, 15, { align: 'center' });
+    
+    doc.setFontSize(8);
+    doc.text(`Order #${order.orderNumber}`, 40, 22, { align: 'center' });
+    doc.text(`${formatDate(order.createdAt)} ${formatTime(order.createdAt)}`, 40, 26, { align: 'center' });
+    doc.text(`Staff: ${order.waiter?.name || 'Admin'} | Table: ${order.table?.number || 'Takeaway'}`, 40, 30, { align: 'center' });
+
+    const bodyData = order.items.map(item => [
+      item.quantity.toString(),
+      item.name,
+      formatCurrency(item.subtotal)
+    ]);
+
+    autoTable(doc, {
+      startY: 35,
+      head: [['Qty', 'Item', 'Total']],
+      body: bodyData,
+      theme: 'plain',
+      styles: { fontSize: 8, cellPadding: 1 },
+      headStyles: { fontStyle: 'bold' },
+      columnStyles: { 0: { cellWidth: 10 }, 2: { cellWidth: 20, halign: 'right' } }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 5;
+    
+    doc.text('Subtotal:', 14, finalY);
+    doc.text(formatCurrency(subtotal), 66, finalY, { align: 'right' });
+    
+    doc.text('Taxes:', 14, finalY + 4);
+    doc.text(formatCurrency(taxAmount), 66, finalY + 4, { align: 'right' });
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total:', 14, finalY + 10);
+    doc.text(formatCurrency(total), 66, finalY + 10, { align: 'right' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.text('Thank you for visiting!', 40, finalY + 20, { align: 'center' });
+    
+    doc.save(`bill-${order.orderNumber}.pdf`);
   };
 
   const subtotal = order.items.reduce((s, i) => s + i.subtotal, 0);
@@ -122,6 +174,13 @@ export default function BillModal({ order, onClose, onPrint }: BillModalProps) {
               className="px-4 py-2 font-medium text-text-secondary hover:bg-surface-2 rounded-xl transition-colors"
             >
               Close
+            </button>
+            <button
+              onClick={handleDownload}
+              className="px-4 py-2 flex items-center gap-2 font-semibold text-text-primary bg-surface-2 hover:bg-surface-3 rounded-xl transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              <span>PDF</span>
             </button>
             <button
               onClick={handlePrint}

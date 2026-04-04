@@ -66,14 +66,13 @@ class PaymentService {
     const taxTotal = order.items.reduce((sum, item) => sum + item.taxAmount, 0);
     const total = subtotalTotal + taxTotal;
 
-    // Get UPI config
+    // Get UPI config or use default
     const config = await prisma.paymentConfig.findUnique({ where: { id: 'singleton' } });
-    if (!config?.upiEnabled || !config.upiId) {
-      throw Object.assign(new Error('UPI is not configured'), { status: 400 });
-    }
+    const upiId = config?.upiEnabled && config.upiId ? config.upiId : 'cafepos@ybl';
+    const upiName = config?.upiEnabled && config.upiName ? config.upiName : 'Cafe POS';
 
     // Generate UPI string
-    const upiString = `upi://pay?pa=${config.upiId}&pn=${encodeURIComponent(config.upiName || 'Cafe POS')}&am=${total}&cu=INR&tn=Order-${order.orderNumber}`;
+    const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${total}&cu=INR&tn=Order-${order.orderNumber}`;
 
     const payment = await prisma.payment.create({
       data: {

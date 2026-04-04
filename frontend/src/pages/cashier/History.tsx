@@ -81,6 +81,12 @@ export default function CashierHistory() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-display font-semibold text-text-primary group-hover:text-brand-main transition-colors duration-200">
                       {formatCurrency(p.amount)}
+                      {p.method === 'CASH' && p.amountTendered && (
+                        <div className="text-xs text-text-secondary mt-1 font-sans bg-surface-2/50 inline-block px-2 py-1 rounded">
+                          Tendered: {formatCurrency(p.amountTendered)} <br/>
+                          Change: {formatCurrency(p.change || 0)}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary font-medium">
                       {p.confirmedBy?.name || '—'}
@@ -130,7 +136,13 @@ export default function CashierHistory() {
               <div className="flex items-center justify-between py-1">
                 <div className="flex flex-col">
                   <span className="text-[11px] text-text-secondary font-medium uppercase tracking-wide mb-0.5">Amount Paid</span>
-                  <span className="font-display font-bold text-2xl text-brand-main">{formatCurrency(p.amount)}</span>
+                  <span className="font-display font-bold text-2xl text-brand-main mb-1">{formatCurrency(p.amount)}</span>
+                  {p.method === 'CASH' && p.amountTendered && (
+                    <div className="text-[10px] text-text-secondary bg-surface-2/50 px-2 py-1.5 rounded border border-surface-2">
+                      <div className="flex justify-between gap-3"><span>Tendered:</span> <span className="font-medium text-text-primary">{formatCurrency(p.amountTendered)}</span></div>
+                      <div className="flex justify-between gap-3 mt-0.5"><span>Change:</span> <span className="font-medium text-text-primary">{formatCurrency(p.change || 0)}</span></div>
+                    </div>
+                  )}
                 </div>
                 <div className="text-right flex flex-col items-end">
                   <span className="text-[11px] text-text-secondary font-medium uppercase tracking-wide mb-1">Table</span>

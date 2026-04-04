@@ -137,6 +137,8 @@ model Table {
   floor     Floor      @relation(fields: [floorId], references: [id], onDelete: Cascade)
   floorId   String
   orders    Order[]
+
+  @@unique([floorId, number])
 }
 
 model Category {
