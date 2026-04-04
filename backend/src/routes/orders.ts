@@ -16,7 +16,7 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const { status, tableId, sessionId, waiterId, limit } = req.query;
     const where: any = {};
-    if (status) where.status = status;
+    if (status) where.status = Array.isArray(status) ? { in: status } : status;
     if (tableId) where.tableId = tableId;
     if (sessionId) where.sessionId = sessionId;
     if (waiterId) where.waiterId = waiterId;

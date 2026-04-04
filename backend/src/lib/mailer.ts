@@ -27,15 +27,23 @@ function createTransporter() {
   return null;
 }
 
-const transporter = createTransporter();
+let transporter: ReturnType<typeof createTransporter> | undefined;
+
+function getTransporter() {
+  if (transporter === undefined) {
+    transporter = createTransporter();
+  }
+  return transporter;
+}
 
 export async function sendMail(options: {
   to: string;
   subject: string;
   html: string;
 }): Promise<void> {
-  if (transporter) {
-    await transporter.sendMail({
+  const mailer = getTransporter();
+  if (mailer) {
+    await mailer.sendMail({
       from: process.env.SMTP_FROM || 'Café POS <noreply@cafepos.local>',
       ...options,
     });
