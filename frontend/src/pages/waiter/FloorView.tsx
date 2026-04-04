@@ -19,10 +19,18 @@ export default function FloorView() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fRes, oRes] = await Promise.all([api.get('/floors'), api.get('/orders?status=CREATED&status=SENT&status=PENDING&status=COOKING&status=READY&status=SERVED&status=PAYMENT_PENDING')]);
+        const fRes = await api.get('/floors');
         setFloors(fRes.data);
+      } catch (err) {
+        console.error('Failed to fetch floors:', err);
+      }
+      try {
+        const oRes = await api.get('/orders?status=CREATED&status=SENT&status=PENDING&status=COOKING&status=READY&status=SERVED&status=PAYMENT_PENDING');
         setOccupiedTables(new Set(oRes.data.map((o: any) => o.tableId)));
-      } catch {} finally { setLoading(false); }
+      } catch (err) {
+        console.error('Failed to fetch orders:', err);
+      }
+      setLoading(false);
     };
     fetchData();
   }, []);
