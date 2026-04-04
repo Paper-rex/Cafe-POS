@@ -17,7 +17,7 @@ router.get('/', (req: Request, res: Response) => {
     if (tokenParam) {
       try {
         const payload = verifyAccessToken(tokenParam);
-        user = { userId: payload.userId, role: payload.role, email: payload.email };
+        user = { userId: payload.userId, role: payload.role, email: payload.email, branchIds: [] };
         req.user = user;
       } catch {
         res.status(401).json({ error: 'Invalid token' });

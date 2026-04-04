@@ -6,9 +6,10 @@ import { Input } from '../../components/ui/Input';
 import { PageLoader } from '../../components/ui/Spinner';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { useToastStore } from '../../store/useToastStore';
-import { Plus, Trash2, GripHorizontal } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import api from '../../lib/api';
-import type { Floor, Table } from '../../types';
+import type { Floor } from '../../types';
+import { useBranchStore } from '../../store/useBranchStore';
 
 const shapeStyles: Record<string, string> = {
   ROUND: 'rounded-full',
@@ -37,11 +38,13 @@ export default function Floors() {
   const draggingIdRef = useRef<string | null>(null);
   const wasDraggingRef = useRef(false);
 
+  const selectedBranchId = useBranchStore((s) => s.selectedBranchId);
   const addToast = useToastStore((s) => s.addToast);
 
   const fetchFloors = async () => {
+    if (!selectedBranchId) return;
     try {
-      const { data } = await api.get('/floors');
+      const { data } = await api.get(`/floors?branchId=${selectedBranchId}`);
       setFloors(data);
     } catch {
       addToast('error', 'Failed to load floors');
@@ -50,12 +53,12 @@ export default function Floors() {
     }
   };
 
-  useEffect(() => { fetchFloors(); }, []);
+  useEffect(() => { fetchFloors(); }, [selectedBranchId]);
 
   const handleAddFloor = async () => {
-    if (!floorName) return;
+    if (!floorName || !selectedBranchId) return;
     try {
-      await api.post('/floors', { name: floorName });
+      await api.post('/floors', { name: floorName, branchId: selectedBranchId });
       addToast('success', 'Floor created');
       setShowAddFloor(false);
       setFloorName('');

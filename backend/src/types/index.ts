@@ -4,6 +4,7 @@ export interface AuthUser {
   userId: string;
   role: string;
   email: string;
+  branchIds: string[];   // branches this user belongs to
 }
 
 export interface ActiveSession {
@@ -11,6 +12,7 @@ export interface ActiveSession {
   openedAt: Date;
   isActive: boolean;
   openedById: string;
+  branchId: string;
 }
 
 declare global {

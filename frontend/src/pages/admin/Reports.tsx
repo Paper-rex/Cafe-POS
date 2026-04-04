@@ -4,11 +4,12 @@ import { Button } from '../../components/ui/Button';
 import { PageLoader } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
 import { useToastStore } from '../../store/useToastStore';
-import { Download, FileText, Calendar, Filter, FileSpreadsheet } from 'lucide-react';
+import { FileText, Calendar, Filter, FileSpreadsheet } from 'lucide-react';
 import api from '../../lib/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useBranchStore } from '../../store/useBranchStore';
 
 interface ReportData {
   month: number;
@@ -26,13 +27,22 @@ export default function Reports() {
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const { availableBranches, selectedBranchId: globalBranchId } = useBranchStore();
+  const [reportBranchId, setReportBranchId] = useState<string>('ALL');
+
+  useEffect(() => {
+    if (globalBranchId && reportBranchId === 'ALL' && availableBranches.length > 0) {
+      setReportBranchId(globalBranchId);
+    }
+  }, [globalBranchId, availableBranches]);
 
   const addToast = useToastStore((s) => s.addToast);
 
   const fetchReport = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/reports/monthly?month=${selectedMonth}&year=${selectedYear}`);
+      const branchQuery = reportBranchId !== 'ALL' ? `&branchId=${reportBranchId}` : '';
+      const res = await api.get(`/reports/monthly?month=${selectedMonth}&year=${selectedYear}${branchQuery}`);
       setData(res.data);
     } catch {
       addToast('error', 'Failed to load report data');
@@ -43,7 +53,7 @@ export default function Reports() {
 
   useEffect(() => {
     fetchReport();
-  }, [selectedMonth, selectedYear]);
+  }, [selectedMonth, selectedYear, reportBranchId]);
 
   // Derived Data for Charts
   const dailyRevenueData = useMemo(() => {
@@ -109,7 +119,7 @@ export default function Reports() {
     
     doc.setFontSize(11);
     doc.text(`Period: ${selectedMonth}/${selectedYear}`, 14, 30);
-    doc.text(`Total Revenue: $${data.totalRevenue.toFixed(2)}`, 14, 36);
+    doc.text(`Total Revenue: ₹${data.totalRevenue.toFixed(2)}`, 14, 36);
     doc.text(`Total Orders: ${data.totalOrders}`, 14, 42);
 
     const tableColumn = ["Order ID", "Date", "Table", "Status", "Total", "Method"];
@@ -118,7 +128,7 @@ export default function Reports() {
       new Date(o.createdAt).toLocaleDateString(),
       o.table?.number ? `T${o.table.number}` : 'Takeaway',
       o.status,
-      `$${(o.payment?.amount || 0).toFixed(2)}`,
+      `₹${(o.payment?.amount || 0).toFixed(2)}`,
       o.payment?.method || 'N/A'
     ]);
 
@@ -164,6 +174,20 @@ export default function Reports() {
               ))}
             </select>
           </div>
+
+          <div className="flex items-center gap-2 bg-white border border-border p-1.5 rounded-xl text-text-primary">
+            <Filter className="w-4 h-4 text-text-muted ml-2 shrink-0" />
+            <select 
+              value={reportBranchId} 
+              onChange={e => setReportBranchId(e.target.value)}
+              className="bg-transparent text-sm font-medium pr-2 focus:outline-none cursor-pointer text-text-primary"
+            >
+              <option value="ALL">All Branches (Merged)</option>
+              {availableBranches.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
           
           <Button variant="outline" onClick={exportCSV} icon={<FileSpreadsheet className="w-4 h-4" />}>
             CSV
@@ -183,7 +207,7 @@ export default function Reports() {
             <Card className="p-6">
               <p className="text-sm font-medium text-text-secondary mb-1">Total Revenue</p>
               <h3 className="text-3xl font-display font-bold text-brand-main">
-                <span className="text-2xl text-text-muted mr-1">$</span>
+                <span className="text-2xl text-text-muted mr-1">₹</span>
                 {data.totalRevenue.toFixed(2)}
               </h3>
             </Card>
@@ -196,7 +220,7 @@ export default function Reports() {
             <Card className="p-6">
               <p className="text-sm font-medium text-text-secondary mb-1">Avg Order Value</p>
               <h3 className="text-3xl font-display font-bold text-text-primary">
-                <span className="text-2xl text-text-muted mr-1">$</span>
+                <span className="text-2xl text-text-muted mr-1">₹</span>
                 {data.totalOrders > 0 ? (data.totalRevenue / data.totalOrders).toFixed(2) : '0.00'}
               </h3>
             </Card>
@@ -221,13 +245,13 @@ export default function Reports() {
                       axisLine={false} 
                       tickLine={false} 
                       tick={{ fill: '#6B7280', fontSize: 12 }} 
-                      tickFormatter={(value) => `$${value}`}
+                      tickFormatter={(value) => `₹${value}`}
                       dx={-10}
                     />
                     <Tooltip 
                       cursor={{ fill: '#F3F4F6' }}
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      formatter={(value: number) => [`$${value.toFixed(2)}`, 'Revenue']}
+                      formatter={(value: number) => [`₹${value.toFixed(2)}`, 'Revenue']}
                       labelFormatter={(label) => `Date: ${selectedMonth}/${label}/${selectedYear}`}
                     />
                     <Bar dataKey="revenue" fill="#32D583" radius={[4, 4, 0, 0]} maxBarSize={40} />
@@ -250,7 +274,7 @@ export default function Reports() {
                     </div>
                     <div className="text-right">
                       <div className="font-semibold text-text-primary">{p.quantity}x</div>
-                      <div className="text-xs text-text-muted">${p.revenue.toFixed(2)}</div>
+                      <div className="text-xs text-text-muted">₹{p.revenue.toFixed(2)}</div>
                     </div>
                   </div>
                 ))}
@@ -300,7 +324,7 @@ export default function Reports() {
                            ) : '-'}
                         </td>
                         <td className="py-4 px-6 text-sm font-semibold text-text-primary text-right">
-                          ${(order.payment?.amount || 0).toFixed(2)}
+                          ₹{(order.payment?.amount || 0).toFixed(2)}
                         </td>
                       </tr>
                     ))}

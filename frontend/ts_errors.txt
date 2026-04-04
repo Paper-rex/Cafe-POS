@@ -1,0 +1,18 @@
+(node:12540) ExperimentalWarning: Support for loading ES Module in require() is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+src/components/layout/KitchenLayout.tsx(3,35): error TS6133: 'Clock' is declared but its value is never read.
+src/components/shared/BillModal.tsx(14,9): error TS6133: 'user' is declared but its value is never read.
+src/pages/admin/Dashboard.tsx(8,38): error TS6133: 'getStatusColor' is declared but its value is never read.
+src/pages/admin/Dashboard.tsx(13,10): error TS6133: 'useCountUp' is declared but its value is never read.
+src/pages/admin/Dashboard.tsx(16,9): error TS6133: 'start' is declared but its value is never read.
+src/pages/admin/Floors.tsx(9,24): error TS6133: 'GripHorizontal' is declared but its value is never read.
+src/pages/admin/Floors.tsx(11,22): error TS6196: 'Table' is declared but never used.
+src/pages/admin/Reports.tsx(7,10): error TS6133: 'Download' is declared but its value is never read.
+src/pages/admin/Session.tsx(7,31): error TS6133: 'AlertTriangle' is declared but its value is never read.
+src/pages/admin/Staff.tsx(10,26): error TS6133: 'Shield' is declared but its value is never read.
+src/pages/admin/Staff.tsx(10,34): error TS6133: 'MoreVertical' is declared but its value is never read.
+src/pages/admin/Staff.tsx(95,9): error TS6133: 'roleBadge' is declared but its value is never read.
+src/pages/cashier/Pending.tsx(9,26): error TS6133: 'formatTime' is declared but its value is never read.
+src/pages/waiter/OrderPage.tsx(6,1): error TS6133: 'Badge' is declared but its value is never read.
+src/pages/waiter/OrderPage.tsx(9,31): error TS6133: 'Trash2' is declared but its value is never read.
+src/pages/waiter/OrderPage.tsx(9,45): error TS6133: 'CreditCard' is declared but its value is never read.

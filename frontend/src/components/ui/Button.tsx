@@ -1,12 +1,15 @@
 import { motion } from 'framer-motion';
+import type { HTMLMotionProps } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import React from 'react';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends Omit<HTMLMotionProps<"button">, "className" | "children"> {
   variant?: 'primary' | 'danger' | 'ghost' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   icon?: React.ReactNode;
+  className?: string;
+  children?: React.ReactNode;
 }
 
 const variantClasses = {

@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../lib/jwt.js';
+import prisma from '../lib/prisma.js';
 import '../types/index.js';
 
-export function authenticate(req: Request, res: Response, next: NextFunction): void {
+export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -14,10 +15,18 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 
   try {
     const payload = verifyAccessToken(token);
+
+    // Fetch the user's branch IDs
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { branches: { select: { id: true } } },
+    });
+
     req.user = {
       userId: payload.userId,
       role: payload.role,
       email: payload.email,
+      branchIds: user?.branches.map(b => b.id) || [],
     };
     next();
   } catch (error: any) {

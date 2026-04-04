@@ -3,52 +3,30 @@ import { motion } from 'framer-motion';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { PageLoader } from '../../components/ui/Spinner';
-import { DollarSign, ShoppingBag, UtensilsCrossed, Zap } from 'lucide-react';
+import { IndianRupee, ShoppingBag, UtensilsCrossed, Zap } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { formatCurrency, formatTime, getStatusColor } from '../../lib/formatters';
-import { useSSE } from '../../hooks/useSSE';
+import { formatCurrency, formatTime } from '../../lib/formatters';
 import api from '../../lib/api';
 import type { DashboardData } from '../../types';
+import { useBranchStore } from '../../store/useBranchStore';
 
-function useCountUp(target: number, duration = 1000) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    let start = 0;
-    const startTime = Date.now();
-    const tick = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      setValue(Math.floor(progress * target));
-      if (progress < 1) requestAnimationFrame(tick);
-    };
-    tick();
-  }, [target, duration]);
-  return value;
-}
+
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const selectedBranchId = useBranchStore(s => s.selectedBranchId);
 
-  const fetchDashboard = () => {
-    api.get('/reports/dashboard').then(({ data }) => {
+  useEffect(() => {
+    if (!selectedBranchId) return;
+    setLoading(true);
+    api.get(`/reports/dashboard?branchId=${selectedBranchId}`).then(({ data }) => {
       setData(data);
       setLoading(false);
     }).catch(() => setLoading(false));
-  };
+  }, [selectedBranchId]);
 
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  useSSE({
-    onOrderCreated: fetchDashboard,
-    onOrderStatusUpdated: fetchDashboard,
-    onPaymentConfirmed: fetchDashboard,
-    onSessionOpened: fetchDashboard,
-    onSessionClosed: fetchDashboard,
-  });
-
+  if (!selectedBranchId) return null;
   if (loading) return <PageLoader />;
   if (!data) return <p className="text-text-muted">Failed to load dashboard</p>;
 
@@ -61,7 +39,7 @@ export default function Dashboard() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
-        <StatCard icon={<DollarSign />} label="Today's Revenue" value={formatCurrency(data.todayRevenue)} color="brand" />
+        <StatCard icon={<IndianRupee />} label="Today's Revenue" value={formatCurrency(data.todayRevenue)} color="brand" />
         <StatCard icon={<ShoppingBag />} label="Total Orders" value={String(data.todayOrders)} color="accent" />
         <StatCard icon={<UtensilsCrossed />} label="Active Tables" value={String(data.activeTables)} color="success" />
         <StatCard icon={<Zap />} label="Session" value={data.activeSession ? 'Active' : 'Closed'} color={data.activeSession ? 'success' : 'neutral'} />

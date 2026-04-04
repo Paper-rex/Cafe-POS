@@ -2,6 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Coffee, Clock, History, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import BranchSelector from '../shared/BranchSelector';
 
 export default function CashierLayout() {
   const user = useAuthStore((s) => s.user);
@@ -23,7 +24,8 @@ export default function CashierLayout() {
             <History className="w-4 h-4" /> History
           </NavLink>
         </nav>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <BranchSelector />
           <span className="text-sm text-text-secondary">{user?.name || user?.email}</span>
           <button onClick={async () => { await logout(); navigate('/login'); }} className="p-2 rounded-lg hover:bg-surface-2 text-text-muted"><LogOut className="w-4 h-4" /></button>
         </div>

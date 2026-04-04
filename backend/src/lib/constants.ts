@@ -25,7 +25,7 @@ export const ORDER_STATUS_TRANSITIONS: Record<string, { next: string; roles: str
   COOKING:          [{ next: 'READY', roles: ['KITCHEN'] }],
   READY:            [{ next: 'SERVED', roles: ['WAITER'] }],
   SERVED:           [{ next: 'PAYMENT_PENDING', roles: ['WAITER'] }],
-  PAYMENT_PENDING:  [{ next: 'PAID', roles: ['CASHIER', 'ADMIN', 'WAITER'] }], // Waiter allowed for CASH only
+  PAYMENT_PENDING:  [{ next: 'PAID', roles: ['CASHIER', 'ADMIN'] }], // Cash confirmation only by cashier/admin
 };
 
 export const ITEM_STATUS_TRANSITIONS: Record<string, { next: string; roles: string[] }[]> = {

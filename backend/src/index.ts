@@ -18,6 +18,7 @@ import orderRoutes from './routes/orders.js';
 import paymentRoutes from './routes/payments.js';
 import reportRoutes from './routes/reports.js';
 import eventRoutes from './routes/events.js';
+import branchRoutes from './routes/branches.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -48,7 +49,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/events', eventRoutes);
-app.use()
+app.use('/api/branches', branchRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });

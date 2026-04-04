@@ -63,6 +63,19 @@ enum ItemStatus {
 
 // ─── Models ─────────────────────────────────────────
 
+model Branch {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations — branch-scoped entities
+  floors    Floor[]
+  sessions  PosSession[]
+  orders    Order[]
+  users     User[]       @relation("UserBranches")
+}
+
 model User {
   id              String      @id @default(uuid())
   email           String      @unique
@@ -79,6 +92,7 @@ model User {
   openedSessions  PosSession[] @relation("SessionOpenedBy")
   orders          Order[]      @relation("OrderWaiter")
   confirmedPayments Payment[]  @relation("PaymentConfirmedBy")
+  branches        Branch[]     @relation("UserBranches")
 }
 
 model PosSession {
@@ -91,6 +105,8 @@ model PosSession {
   // Relations
   openedBy    User      @relation("SessionOpenedBy", fields: [openedById], references: [id])
   openedById  String
+  branch      Branch    @relation(fields: [branchId], references: [id])
+  branchId    String
   orders      Order[]
 }
 
@@ -101,6 +117,8 @@ model Floor {
   updatedAt DateTime @updatedAt
 
   // Relations
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  branchId  String
   tables    Table[]
 }
 
@@ -129,7 +147,7 @@ model Category {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  // Relations
+  // Relations — categories are GLOBAL (shared across branches)
   products  Product[]
 }
 
@@ -144,7 +162,7 @@ model Product {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  // Relations
+  // Relations — products are GLOBAL (shared across branches)
   category    Category  @relation(fields: [categoryId], references: [id])
   categoryId  String
   variants    Variant[]
@@ -187,18 +205,22 @@ model Order {
   waiterId    String
   session     PosSession  @relation(fields: [sessionId], references: [id])
   sessionId   String
+  branch      Branch      @relation(fields: [branchId], references: [id])
+  branchId    String
   items       OrderItem[]
   payment     Payment?
 }
 
 model OrderItem {
-  id        String  @id @default(uuid())
-  name      String  // Snapshot of product name
-  unitPrice Float   // Snapshot of product price
-  quantity  Int     @default(1)
-  variants  Json?   // Snapshot: [{name: "Size", selected: "M", extraPrice: 1000}]
-  toppings  Json?   // Snapshot: [{name: "Whipped Cream", price: 500}]
-  subtotal  Float
+  id         String  @id @default(uuid())
+  name       String  // Snapshot of product name
+  unitPrice  Float   // Snapshot of product price
+  quantity   Int     @default(1)
+  variants   Json?   // Snapshot: [{name: "Size", selected: "M", extraPrice: 1000}]
+  toppings   Json?   // Snapshot: [{name: "Whipped Cream", price: 500}]
+  subtotal   Float
+  taxPercent Float   @default(0)   // Snapshot of product tax at order time
+  taxAmount  Float   @default(0)   // Calculated: subtotal * (taxPercent / 100)
   isDone     Boolean    @default(false)
   itemStatus ItemStatus @default(PENDING)
 
@@ -214,6 +236,7 @@ model Payment {
   method          PaymentMethod
   status          PaymentStatus @default(PENDING)
   amount          Float
+  taxTotal        Float         @default(0)   // Total tax component
   amountTendered  Float?
   change          Float?
   upiQrData       String?
@@ -228,6 +251,7 @@ model Payment {
   confirmedById   String?
 }
 
+// PaymentConfig is GLOBAL (shared across branches)
 model PaymentConfig {
   id          String  @id @default("singleton")
   cashEnabled Boolean @default(true)

@@ -1,8 +1,9 @@
 import { Outlet, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Coffee, ChefHat, LogOut, Clock } from 'lucide-react';
+import { Coffee, ChefHat, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useState, useEffect } from 'react';
+import BranchSelector from '../shared/BranchSelector';
 
 export default function KitchenLayout() {
   const user = useAuthStore((s) => s.user);
@@ -24,7 +25,14 @@ export default function KitchenLayout() {
           <button onClick={async () => { await logout(); navigate('/login'); }} className="text-white/40 hover:text-white"><LogOut className="w-4 h-4" /></button>
         </div>
       </aside>
-      <motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 p-6 overflow-auto"><Outlet /></motion.main>
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        <header className="bg-white border-b border-border px-6 py-3 flex items-center justify-end z-30 shrink-0">
+          <BranchSelector />
+        </header>
+        <motion.main initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 p-6 overflow-auto">
+          <Outlet />
+        </motion.main>
+      </div>
     </div>
   );
 }

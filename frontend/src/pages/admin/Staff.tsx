@@ -7,9 +7,10 @@ import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { PageLoader } from '../../components/ui/Spinner';
 import { useToastStore } from '../../store/useToastStore';
-import { UserPlus, Mail, Shield, MoreVertical, Send, Trash2, Users as UsersIcon } from 'lucide-react';
+import { UserPlus, Mail, Send, Trash2, Users as UsersIcon } from 'lucide-react';
 import api from '../../lib/api';
 import type { User } from '../../types';
+import { useBranchStore } from '../../store/useBranchStore';
 
 export default function Staff() {
   const [staff, setStaff] = useState<User[]>([]);
@@ -21,16 +22,24 @@ export default function Staff() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const addToast = useToastStore((s) => s.addToast);
 
+  const selectedBranchId = useBranchStore((s) => s.selectedBranchId);
+
   const fetchStaff = async () => {
-    try { const { data } = await api.get('/admin/staff'); setStaff(data); } catch {} finally { setLoading(false); }
+    if (!selectedBranchId) return;
+    try { const { data } = await api.get(`/admin/staff?branchId=${selectedBranchId}`); setStaff(data); } catch {} finally { setLoading(false); }
   };
-  useEffect(() => { fetchStaff(); }, []);
+  useEffect(() => { fetchStaff(); }, [selectedBranchId]);
 
   const handleInvite = async () => {
     if (!inviteEmail) return;
     setInviteLoading(true);
     try {
-      await api.post('/admin/staff', { email: inviteEmail, role: inviteRole, name: inviteName });
+      await api.post('/admin/staff', { 
+        email: inviteEmail, 
+        role: inviteRole, 
+        name: inviteName,
+        branchIds: selectedBranchId ? [selectedBranchId] : [] 
+      });
       addToast('success', `Invite sent to ${inviteEmail}`);
       setShowInvite(false); setInviteEmail(''); setInviteName('');
       fetchStaff();
@@ -83,10 +92,7 @@ export default function Staff() {
 
   if (loading) return <PageLoader />;
 
-  const roleBadge = (role: string) => {
-    const m: Record<string, 'success' | 'info' | 'warning' | 'danger'> = { ADMIN: 'danger', WAITER: 'success', KITCHEN: 'warning', CASHIER: 'info' };
-    return <Badge variant={m[role] || 'neutral'}>{role}</Badge>;
-  };
+
   const statusBadge = (status: string) => {
     const m: Record<string, 'success' | 'warning' | 'danger'> = { ACTIVE: 'success', PENDING: 'warning', DISABLED: 'danger' };
     return <Badge variant={m[status] || 'neutral'} dot>{status}</Badge>;
