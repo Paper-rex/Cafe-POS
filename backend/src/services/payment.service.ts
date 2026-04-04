@@ -10,8 +10,11 @@ class PaymentService {
 
     if (!order) throw Object.assign(new Error('Order not found'), { status: 404 });
     if (order.payment) throw Object.assign(new Error('Payment already exists for this order'), { status: 409 });
-    if (order.status !== 'SERVED') {
-      throw Object.assign(new Error('Order must be SERVED before payment'), { status: 400 });
+    
+    // Ensure all items are served
+    const allItemsServed = order.items.length > 0 && order.items.every(i => i.itemStatus === 'SERVED');
+    if (!allItemsServed || order.status !== 'SERVED') {
+      throw Object.assign(new Error('All items must be SERVED before payment'), { status: 400 });
     }
 
     // Calculate total
@@ -54,8 +57,10 @@ class PaymentService {
 
     if (!order) throw Object.assign(new Error('Order not found'), { status: 404 });
     if (order.payment) throw Object.assign(new Error('Payment already exists'), { status: 409 });
-    if (order.status !== 'SERVED') {
-      throw Object.assign(new Error('Order must be SERVED before payment'), { status: 400 });
+    
+    const allItemsServed = order.items.length > 0 && order.items.every(i => i.itemStatus === 'SERVED');
+    if (!allItemsServed || order.status !== 'SERVED') {
+      throw Object.assign(new Error('All items must be SERVED before payment'), { status: 400 });
     }
 
     const total = order.items.reduce((sum, item) => sum + item.subtotal, 0);
@@ -94,7 +99,7 @@ class PaymentService {
     return { payment, upiString };
   }
 
-  async confirmPayment(paymentId: string, cashierId: string, amountTendered?: number) {
+  async confirmPayment(paymentId: string, userId: string, amountTendered?: number, userRole?: string) {
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
       include: { order: true },
@@ -102,6 +107,10 @@ class PaymentService {
 
     if (!payment) throw Object.assign(new Error('Payment not found'), { status: 404 });
     if (payment.status !== 'PENDING') throw Object.assign(new Error('Payment is not pending'), { status: 400 });
+    
+    if (userRole === 'WAITER' && payment.method !== 'CASH') {
+      throw Object.assign(new Error('Waiters can only confirm CASH payments'), { status: 403 });
+    }
 
     let change: number | undefined;
     if (payment.method === 'CASH') {
@@ -115,7 +124,7 @@ class PaymentService {
       where: { id: paymentId },
       data: {
         status: 'PAID',
-        confirmedById: cashierId,
+        confirmedById: userId,
         amountTendered,
         change,
       },

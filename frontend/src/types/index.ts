@@ -99,9 +99,12 @@ export interface OrderItem {
   toppings: any;
   subtotal: number;
   isDone: boolean;
+  itemStatus: ItemStatus;
   orderId: string;
   productId: string;
 }
+
+export type ItemStatus = 'PENDING' | 'COOKING' | 'READY' | 'SERVED';
 
 export interface Payment {
   id: string;

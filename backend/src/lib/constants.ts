@@ -25,7 +25,13 @@ export const ORDER_STATUS_TRANSITIONS: Record<string, { next: string; roles: str
   COOKING:          [{ next: 'READY', roles: ['KITCHEN'] }],
   READY:            [{ next: 'SERVED', roles: ['WAITER'] }],
   SERVED:           [{ next: 'PAYMENT_PENDING', roles: ['WAITER'] }],
-  PAYMENT_PENDING:  [{ next: 'PAID', roles: ['CASHIER', 'ADMIN'] }],
+  PAYMENT_PENDING:  [{ next: 'PAID', roles: ['CASHIER', 'ADMIN', 'WAITER'] }], // Waiter allowed for CASH only
+};
+
+export const ITEM_STATUS_TRANSITIONS: Record<string, { next: string; roles: string[] }[]> = {
+  PENDING: [{ next: 'COOKING', roles: ['KITCHEN', 'ADMIN'] }],
+  COOKING: [{ next: 'READY', roles: ['KITCHEN', 'ADMIN'] }],
+  READY:   [{ next: 'SERVED', roles: ['WAITER', 'ADMIN'] }],
 };
 
 // ─── Error Codes ────────────────────────────────────

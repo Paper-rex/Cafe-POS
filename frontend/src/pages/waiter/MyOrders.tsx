@@ -5,22 +5,23 @@ import { Button } from '../../components/ui/Button';
 import { PageLoader } from '../../components/ui/Spinner';
 import { useToastStore } from '../../store/useToastStore';
 import { formatCurrency, formatTime, getStatusColor } from '../../lib/formatters';
-import { CheckCircle, CreditCard } from 'lucide-react';
+import { CheckCircle, CreditCard, Banknote, QrCode, CheckSquare } from 'lucide-react';
 import api from '../../lib/api';
 import { useSSE } from '../../hooks/useSSE';
-import type { Order } from '../../types';
+import type { Order, OrderItem } from '../../types';
 
 export default function MyOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const addToast = useToastStore((s) => s.addToast);
 
   const fetchOrders = async () => {
-    try { const { data } = await api.get('/orders'); setOrders(data.filter((o: Order) => o.status !== 'CANCELLED')); }
-    catch {} finally { setLoading(false); }
+    try { 
+      const { data } = await api.get('/orders'); 
+      setOrders(data.filter((o: Order) => o.status !== 'CANCELLED' && o.status !== 'PAID')); 
+    } catch {} finally { setLoading(false); }
   };
-
-// ...
   useSSE({
     onOrderStatusUpdated: fetchOrders,
     onPaymentConfirmed: fetchOrders,
@@ -29,55 +30,137 @@ export default function MyOrders() {
 
   useEffect(() => { fetchOrders(); }, []);
 
-  const handleMarkServed = async (orderId: string) => {
-    try { await api.patch(`/orders/${orderId}/status`, { status: 'SERVED' }); addToast('success', 'Marked as served'); fetchOrders(); }
-    catch (err: any) { addToast('error', err.response?.data?.error || 'Failed'); }
+  const toggleItemSelection = (itemId: string) => {
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  };
+
+  const handleMarkServed = async (orderId: string, availableReadyItems: OrderItem[]) => {
+    const itemsToMove = availableReadyItems.filter(i => selectedItems.has(i.id));
+    const finalItems = itemsToMove.length > 0 ? itemsToMove : availableReadyItems;
+    const itemIds = finalItems.map(i => i.id);
+
+    try {
+      await api.patch(`/orders/${orderId}/items/status`, { itemIds, status: 'SERVED' });
+      addToast('success', `Marked ${itemIds.length} item(s) as served`);
+      setSelectedItems(new Set());
+      fetchOrders();
+    } catch (err: any) {
+      addToast('error', err.response?.data?.error || 'Failed');
+    }
   };
 
   const handleInitiatePayment = async (orderId: string, method: string) => {
     try {
-      await api.patch(`/orders/${orderId}/status`, { status: 'PAYMENT_PENDING' });
-      await api.post('/payments', { orderId, method });
-      addToast('success', `${method} payment initiated`); fetchOrders();
-    } catch (err: any) { addToast('error', err.response?.data?.error || 'Failed'); }
+      const { data: payment } = await api.post('/payments', { orderId, method });
+      
+      if (method === 'CASH') {
+        // Automatically confirm cash for waiters
+        await api.patch(`/payments/${payment.id}/confirm`, { amountTendered: payment.amount });
+        addToast('success', 'Cash payment marked as paid');
+      } else {
+        addToast('success', `${method} payment initiated`);
+      }
+      fetchOrders();
+    } catch (err: any) { 
+      addToast('error', err.response?.data?.error || 'Failed to process payment'); 
+    }
   };
 
   if (loading) return <PageLoader />;
-
-  const statusSteps = ['CREATED', 'SENT', 'PENDING', 'COOKING', 'READY', 'SERVED', 'PAYMENT_PENDING', 'PAID'];
 
   return (
     <div>
       <h1 className="font-display text-2xl font-bold text-text-primary mb-6">My Orders</h1>
       {orders.length === 0 ? (
-        <Card className="p-12 text-center"><p className="text-text-muted">No orders yet this session</p></Card>
+        <Card className="p-12 text-center"><p className="text-text-muted">No active orders</p></Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {orders.map(order => {
-            const stepIdx = statusSteps.indexOf(order.status);
+            const allItemsServed = order.items.length > 0 && order.items.every(i => i.itemStatus === 'SERVED');
+            const readyItems = order.items.filter(i => i.itemStatus === 'READY');
+            const selectedReadyCount = readyItems.filter(i => selectedItems.has(i.id)).length;
+
             return (
               <Card key={order.id} className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div><h3 className="font-mono font-bold text-text-primary">{order.orderNumber}</h3><p className="text-xs text-text-muted">Table {order.table?.number} • {formatTime(order.createdAt)}</p></div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>{order.status}</span>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-mono font-bold text-text-primary">{order.orderNumber}</h3>
+                    <p className="text-xs text-text-muted">Table {order.table?.number} • {formatTime(order.createdAt)}</p>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                    {order.status}
+                  </span>
                 </div>
-                {/* Status Timeline */}
-                <div className="flex items-center gap-1 mb-4">
-                  {statusSteps.map((s, i) => (
-                    <div key={s} className={`h-1.5 flex-1 rounded-full ${i <= stepIdx ? 'bg-brand-main' : 'bg-surface-2'}`} />
-                  ))}
+
+                {/* Items List */}
+                <div className="space-y-2 mb-4 bg-surface-1 p-3 rounded-xl border border-surface-2">
+                  <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Order Items</h4>
+                  {order.items.map(item => {
+                    const isReady = item.itemStatus === 'READY';
+                    const isSelected = selectedItems.has(item.id);
+                    return (
+                      <div key={item.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          {isReady ? (
+                            <input 
+                              type="checkbox" 
+                              checked={isSelected} 
+                              onChange={() => toggleItemSelection(item.id)}
+                              className="w-4 h-4 rounded border-border text-brand-main focus:ring-brand-pale cursor-pointer" 
+                            />
+                          ) : (
+                            <div className="w-4 h-4" /> // spacing
+                          )}
+                          <span className={`${item.itemStatus === 'SERVED' ? 'line-through text-text-muted' : 'text-text-primary'}`}>
+                            {item.quantity}x {item.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${getStatusColor(item.itemStatus || 'PENDING')}`}>
+                            {item.itemStatus || 'PENDING'}
+                          </span>
+                          <span className="text-text-primary font-medium w-16 text-right">{formatCurrency(item.subtotal)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="space-y-1 mb-3">
-                  {order.items.slice(0, 3).map(item => (
-                    <div key={item.id} className="flex justify-between text-sm"><span className="text-text-secondary">{item.quantity}x {item.name}</span><span className="text-text-primary">{formatCurrency(item.subtotal)}</span></div>
-                  ))}
-                  {order.items.length > 3 && <p className="text-xs text-text-muted">+{order.items.length - 3} more items</p>}
-                </div>
+
                 <div className="flex items-center justify-between pt-3 border-t border-surface-2">
-                  <span className="font-display font-bold text-text-primary">{formatCurrency(order.items.reduce((s, i) => s + i.subtotal, 0))}</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-text-muted">Total</span>
+                    <span className="font-display text-lg font-bold text-text-primary">
+                      {formatCurrency(order.items.reduce((s, i) => s + i.subtotal, 0))}
+                    </span>
+                  </div>
+                  
                   <div className="flex gap-2">
-                    {order.status === 'READY' && <Button size="sm" icon={<CheckCircle className="w-3.5 h-3.5" />} onClick={() => handleMarkServed(order.id)}>Served</Button>}
-                    {order.status === 'SERVED' && <Button size="sm" icon={<CreditCard className="w-3.5 h-3.5" />} onClick={() => handleInitiatePayment(order.id, 'CASH')}>Pay</Button>}
+                    {readyItems.length > 0 && (
+                      <Button 
+                        size="sm" 
+                        icon={selectedReadyCount > 0 ? <CheckSquare className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />} 
+                        onClick={() => handleMarkServed(order.id, readyItems)}
+                      >
+                        {selectedReadyCount > 0 ? `Serve ${selectedReadyCount}` : 'Serve All Ready'}
+                      </Button>
+                    )}
+                    
+                    {allItemsServed && order.status !== 'PAYMENT_PENDING' && order.status !== 'PAID' && (
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" icon={<Banknote className="w-4 h-4" />} onClick={() => handleInitiatePayment(order.id, 'CASH')}>Cash</Button>
+                        <Button size="sm" variant="outline" icon={<CreditCard className="w-4 h-4" />} onClick={() => handleInitiatePayment(order.id, 'CARD')}>Card</Button>
+                        <Button size="sm" variant="outline" icon={<QrCode className="w-4 h-4" />} onClick={() => handleInitiatePayment(order.id, 'UPI')}>UPI</Button>
+                      </div>
+                    )}
+
+                    {order.status === 'PAYMENT_PENDING' && (
+                       <Badge variant="warning">Waiting for Payment</Badge>
+                    )}
                   </div>
                 </div>
               </Card>

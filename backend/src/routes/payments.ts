@@ -22,18 +22,27 @@ router.post('/', authorize('WAITER', 'ADMIN'), async (req: Request, res: Respons
 
 router.get('/pending', authorize('CASHIER', 'ADMIN'), async (_req, res) => {
   try {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const payments = await prisma.payment.findMany({
-      where: { status: 'PENDING' },
-      include: { order: { include: { items: true, table: { select: { number: true } }, waiter: { select: { name: true } } } } },
+      where: { 
+        OR: [
+          { status: 'PENDING' },
+          { status: 'PAID', createdAt: { gte: twentyFourHoursAgo } }
+        ]
+      },
+      include: { 
+        order: { include: { items: true, table: { select: { number: true } }, waiter: { select: { name: true } } } },
+        confirmedBy: { select: { name: true } }
+      },
       orderBy: { createdAt: 'asc' },
     });
     res.json(payments);
   } catch (e) { res.status(500).json({ error: 'Internal server error' }); }
 });
 
-router.patch('/:id/confirm', authorize('CASHIER', 'ADMIN'), async (req: Request, res: Response) => {
+router.patch('/:id/confirm', authorize('CASHIER', 'ADMIN', 'WAITER'), async (req: Request, res: Response) => {
   try {
-    const result = await paymentService.confirmPayment(req.params.id, req.user!.userId, req.body.amountTendered);
+    const result = await paymentService.confirmPayment(req.params.id, req.user!.userId, req.body.amountTendered, req.user!.role);
     res.json(result);
   } catch (e: any) { res.status(e.status || 500).json({ error: e.message }); }
 });
