@@ -100,6 +100,15 @@ router.post('/:floorId/tables', authorize('ADMIN'), async (req: Request, res: Re
 
     if (!number) { res.status(400).json({ error: 'Table number is required' }); return; }
 
+    // Check for duplicate table number on the same floor
+    const existing = await prisma.table.findUnique({
+      where: { floorId_number: { floorId: req.params.floorId as string, number } },
+    });
+    if (existing) {
+      res.status(409).json({ error: `Table T${number} already exists on this floor` });
+      return;
+    }
+
     const table = await prisma.table.create({
       data: {
         number,
@@ -112,7 +121,8 @@ router.post('/:floorId/tables', authorize('ADMIN'), async (req: Request, res: Re
     });
 
     res.status(201).json(table);
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'P2002') { res.status(409).json({ error: 'A table with this number already exists on this floor' }); return; }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -139,6 +149,7 @@ router.patch('/tables/:id', authorize('ADMIN'), async (req: Request, res: Respon
     res.json(table);
   } catch (error: any) {
     if (error.code === 'P2025') { res.status(404).json({ error: 'Table not found' }); return; }
+    if (error.code === 'P2002') { res.status(409).json({ error: 'A table with this number already exists on this floor' }); return; }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
