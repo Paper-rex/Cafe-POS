@@ -7,7 +7,6 @@ const router = Router();
 router.use(authenticate);
 router.use(authorize('ADMIN'));
 
-// GET /api/reports/dashboard
 router.get('/dashboard', async (_req, res) => {
   try {
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -18,7 +17,7 @@ router.get('/dashboard', async (_req, res) => {
       prisma.order.findMany({ take: 20, orderBy: { createdAt: 'desc' }, include: { table: { select: { number: true } }, waiter: { select: { name: true } }, items: true } }),
       prisma.orderItem.groupBy({ by: ['name'], where: { order: { createdAt: { gte: today } } }, _sum: { quantity: true, subtotal: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 10 }),
     ]);
-    // Last 7 days revenue
+
     const days: { date: string; revenue: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0, 0, 0, 0);

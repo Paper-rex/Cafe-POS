@@ -7,11 +7,7 @@ import '../types/index.js';
 const categoriesRouter = Router();
 const productsRouter = Router();
 
-// ═══════════════════════════════════════════════════════
-// CATEGORIES
-// ═══════════════════════════════════════════════════════
 
-// GET /api/categories
 categoriesRouter.get('/', authenticate, async (_req: Request, res: Response) => {
   try {
     const categories = await prisma.category.findMany({
@@ -23,6 +19,7 @@ categoriesRouter.get('/', authenticate, async (_req: Request, res: Response) => 
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 // POST /api/categories
 categoriesRouter.post('/', authenticate, authorize('ADMIN'), async (req: Request, res: Response) => {

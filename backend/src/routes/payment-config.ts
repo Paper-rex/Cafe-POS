@@ -23,17 +23,17 @@ router.get('/', authenticate, async (_req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/payment-config — Update config (admin only)
+
 router.patch('/', authenticate, authorize('ADMIN'), async (req: Request, res: Response) => {
   try {
     const { cashEnabled, cardEnabled, upiEnabled, upiId, upiName } = req.body;
 
-    // Validate: at least one method enabled
+
     const cash = cashEnabled !== undefined ? cashEnabled : undefined;
     const card = cardEnabled !== undefined ? cardEnabled : undefined;
     const upi = upiEnabled !== undefined ? upiEnabled : undefined;
 
-    // Get current config
+
     const current = await prisma.paymentConfig.findUnique({ where: { id: 'singleton' } });
     const finalCash = cash ?? current?.cashEnabled ?? true;
     const finalCard = card ?? current?.cardEnabled ?? true;

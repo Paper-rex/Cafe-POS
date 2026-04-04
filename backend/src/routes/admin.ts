@@ -8,11 +8,9 @@ import '../types/index.js';
 
 const router = Router();
 
-// All admin routes require authentication + ADMIN role
-router.use(authenticate);
-router.use(authorize('ADMIN'));
+router.use(authenticate);// authenticate method use karse
+router.use(authorize('ADMIN'));// admin ne authorize karse
 
-// GET /api/admin/staff — List all staff
 router.get('/staff', async (_req: Request, res: Response) => {
   try {
     const staff = await prisma.user.findMany({
@@ -180,7 +178,6 @@ router.delete('/staff/:id', async (req: Request, res: Response) => {
   }
 });
 
-// PATCH /api/admin/staff/:id/enable — Re-enable disabled user
 router.patch('/staff/:id/enable', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

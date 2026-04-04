@@ -28,14 +28,14 @@ export default function Floors() {
   const [showAddFloor, setShowAddFloor] = useState(false);
   const [showAddTable, setShowAddTable] = useState(false);
   const [floorName, setFloorName] = useState('');
-  
+
   const [pendingPos, setPendingPos] = useState({ posX: 50, posY: 50 });
   const [tableForm, setTableForm] = useState({ number: '', seats: '4', shape: 'SQUARE' });
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // Drag and Drop State
   const canvasRef = useRef<HTMLDivElement>(null);
   const draggingIdRef = useRef<string | null>(null);
+  const wasDraggingRef = useRef(false);
 
   const addToast = useToastStore((s) => s.addToast);
 
@@ -112,11 +112,12 @@ export default function Floors() {
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!draggingIdRef.current || !canvasRef.current) return;
+    wasDraggingRef.current = true;
     
     const rect = canvasRef.current.getBoundingClientRect();
     let x = ((e.clientX - rect.left) / rect.width) * 100;
     let y = ((e.clientY - rect.top) / rect.height) * 100;
-    
+
     x = Math.max(0, Math.min(100, x));
     y = Math.max(0, Math.min(100, y));
 
@@ -153,6 +154,11 @@ export default function Floors() {
   };
 
   const handleCanvasClick = (e: React.MouseEvent) => {
+    if (wasDraggingRef.current) {
+      wasDraggingRef.current = false;
+      return;
+    }
+    if ((e.target as HTMLElement).closest('.table-component')) return;
     if (!canvasRef.current) return;
     // Find the current bounding box
     const rect = canvasRef.current.getBoundingClientRect();
@@ -192,9 +198,8 @@ export default function Floors() {
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
         {floors.map((floor, i) => (
           <button key={floor.id} onClick={() => setActiveFloor(i)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${
-              i === activeFloor ? 'bg-brand-main text-white' : 'bg-white text-text-secondary border border-border hover:bg-surface-2'
-            }`}>
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${i === activeFloor ? 'bg-brand-main text-white' : 'bg-white text-text-secondary border border-border hover:bg-surface-2'
+              }`}>
             {floor.name} ({floor.tables.length})
           </button>
         ))}
@@ -213,29 +218,33 @@ export default function Floors() {
       {/* Floor Canvas */}
       {currentFloor ? (
         <Card className="p-0 overflow-hidden relative min-h-[600px] bg-surface-1/50 border border-border">
-          <div 
+          <div
             ref={canvasRef}
             onClick={handleCanvasClick}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            className="absolute inset-0 cursor-crosshair touch-none" 
-            style={{ 
-              backgroundImage: 'radial-gradient(circle, #DDE8E2 1.5px, transparent 1.5px)', 
-              backgroundSize: '30px 30px' 
+            className="absolute inset-0 cursor-crosshair touch-none"
+            style={{
+              backgroundImage: 'radial-gradient(circle, #DDE8E2 1.5px, transparent 1.5px)',
+              backgroundSize: '30px 30px'
             }}
           >
             {currentFloor.tables.map((table: any) => (
               <div 
                 key={table.id}
-                onPointerDown={(e) => handlePointerDown(e, table.id)}
-                className="absolute group z-10 hover:z-20 transform -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing"
+                onPointerDown={(e) => {
+                  wasDraggingRef.current = false;
+                  handlePointerDown(e, table.id);
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute group z-10 hover:z-20 transform -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing table-component"
                 style={{ left: `${table.posX}%`, top: `${table.posY}%` }}
               >
                 <div className={`${shapeSize[table.shape]} ${shapeStyles[table.shape]} shadow-sm hover:shadow-md transition-shadow bg-brand-pale border-2 border-brand-light flex flex-col items-center justify-center text-brand-dark`}>
                   <span className="text-sm font-bold flex items-center gap-1">T{table.number}</span>
                   <span className="text-[10px] text-brand-main/80 font-medium">{table.seats} Seats</span>
                 </div>
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(table.id); }}
                   className="absolute -top-3 -right-3 w-6 h-6 bg-danger text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:scale-110"
                 >
@@ -271,10 +280,10 @@ export default function Floors() {
             <label className="block text-sm font-medium text-text-secondary mb-1.5">Shape</label>
             <div className="grid grid-cols-3 gap-3">
               {(['SQUARE', 'ROUND', 'RECTANGLE'] as const).map(shape => (
-                <button 
-                  key={shape} 
+                <button
+                  key={shape}
                   type="button"
-                  onClick={() => setTableForm(f => ({...f, shape}))}
+                  onClick={() => setTableForm(f => ({ ...f, shape }))}
                   className={`py-2 rounded-xl text-xs font-medium border transition-colors ${tableForm.shape === shape ? 'border-brand-main bg-brand-pale text-brand-dark' : 'border-border bg-white text-text-secondary hover:bg-surface-2'}`}
                 >
                   {shape.charAt(0) + shape.slice(1).toLowerCase()}
@@ -282,7 +291,7 @@ export default function Floors() {
               ))}
             </div>
           </div>
-          
+
           <div className="flex gap-3 pt-4">
             <Button variant="ghost" onClick={() => setShowAddTable(false)} className="flex-1">Cancel</Button>
             <Button onClick={handleAddTable} className="flex-1">Add Table</Button>

@@ -22,7 +22,6 @@ import eventRoutes from './routes/events.js';
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// ─── Middleware ──────────────────────────────────────
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
@@ -31,15 +30,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Static files for uploads
 app.use('/uploads', express.static(path.resolve(process.env.UPLOAD_DIR || './uploads')));
 
-// ─── Health Check ───────────────────────────────────
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ─── API Routes ─────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/session', sessionRoutes);
@@ -52,12 +49,10 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/events', eventRoutes);
 
-// ─── 404 Handler ────────────────────────────────────
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-// ─── Error Handler ──────────────────────────────────
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error:', err);
   res.status(err.status || 500).json({
@@ -66,7 +61,6 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   });
 });
 
-// ─── Start Server ───────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n Café POS Backend running on http://localhost:${PORT}`);
   console.log(`   Environment: ${process.env.NODE_ENV || 'development'}\n`);

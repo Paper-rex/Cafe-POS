@@ -56,23 +56,27 @@ export default function FloorView() {
             {currentFloor.tables.map((table) => {
               const isOccupied = occupiedTables.has(table.id);
               return (
-                <motion.div
+                <div
                   key={table.id}
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate(`/waiter/order?tableId=${table.id}&tableNumber=${table.number}`)}
-                  className="absolute cursor-pointer transform -translate-x-1/2 -translate-y-1/2"
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2"
                   style={{ left: `${table.posX}%`, top: `${table.posY}%` }}
                 >
-                  <div className={`${shapeSizes[table.shape]} ${shapeStyles[table.shape]} 
-                    ${isOccupied ? 'bg-danger-pale border-2 border-red-300' : 'bg-success-pale border-2 border-brand-light'}
-                    flex flex-col items-center justify-center shadow-card hover:shadow-card-hover transition-all`}>
-                    <span className="text-sm font-bold text-text-primary">T{table.number}</span>
-                    <span className={`text-[10px] mt-0.5 ${isOccupied ? 'text-danger' : 'text-brand-main'}`}>
-                      {isOccupied ? 'Occupied' : `${table.seats} seats`}
-                    </span>
-                  </div>
-                </motion.div>
+                  <motion.div
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => navigate(`/waiter/order?tableId=${table.id}&tableNumber=${table.number}`)}
+                    className="cursor-pointer"
+                  >
+                    <div className={`${shapeSizes[table.shape]} ${shapeStyles[table.shape]} 
+                      ${isOccupied ? 'bg-danger-pale border-2 border-red-300' : 'bg-success-pale border-2 border-brand-light'}
+                      flex flex-col items-center justify-center shadow-card hover:shadow-card-hover transition-all`}>
+                      <span className="text-sm font-bold text-text-primary">T{table.number}</span>
+                      <span className={`text-[10px] mt-0.5 ${isOccupied ? 'text-danger' : 'text-brand-main'}`}>
+                        {isOccupied ? 'Occupied' : `${table.seats} seats`}
+                      </span>
+                    </div>
+                  </motion.div>
+                </div>
               );
             })}
           </div>
