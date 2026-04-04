@@ -7,13 +7,23 @@ import '../types/index.js';
 
 const router = Router();
 
-// GET /api/session/active — Get active session (any authenticated user)
-router.get('/active', authenticate, async (_req: Request, res: Response) => {
+// GET /api/session/active — Get active session for a branch (any authenticated user)
+router.get('/active', authenticate, async (req: Request, res: Response) => {
   try {
+    const branchId = (req.query.branchId as string)
+      || (req.headers['x-branch-id'] as string)
+      || req.user?.branchIds?.[0];
+
+    if (!branchId) {
+      res.json(null);
+      return;
+    }
+
     const session = await prisma.posSession.findFirst({
-      where: { isActive: true },
+      where: { isActive: true, branchId },
       include: {
         openedBy: { select: { id: true, name: true, email: true } },
+        branch: { select: { id: true, name: true } },
       },
     });
 
@@ -24,12 +34,18 @@ router.get('/active', authenticate, async (_req: Request, res: Response) => {
   }
 });
 
-// GET /api/session/history — Session history (admin only)
+// GET /api/session/history — Session history (admin only), optional branch filter
 router.get('/history', authenticate, authorize('ADMIN'), async (req: Request, res: Response) => {
   try {
+    const { branchId } = req.query;
+    const where: any = {};
+    if (branchId) where.branchId = branchId;
+
     const sessions = await prisma.posSession.findMany({
+      where,
       include: {
         openedBy: { select: { id: true, name: true, email: true } },
+        branch: { select: { id: true, name: true } },
         _count: { select: { orders: true } },
       },
       orderBy: { openedAt: 'desc' },
@@ -43,10 +59,16 @@ router.get('/history', authenticate, authorize('ADMIN'), async (req: Request, re
   }
 });
 
-// POST /api/session/open — Open new session (admin only)
+// POST /api/session/open — Open new session for a branch (admin only)
 router.post('/open', authenticate, authorize('ADMIN'), async (req: Request, res: Response) => {
   try {
-    const session = await sessionService.openSession(req.user!.userId);
+    const { branchId } = req.body;
+    if (!branchId) {
+      res.status(400).json({ error: 'branchId is required' });
+      return;
+    }
+
+    const session = await sessionService.openSession(req.user!.userId, branchId);
     res.status(201).json(session);
   } catch (error: any) {
     if (error.status === 409) {
@@ -58,13 +80,19 @@ router.post('/open', authenticate, authorize('ADMIN'), async (req: Request, res:
   }
 });
 
-// POST /api/session/close — Close active session (admin only)
+// POST /api/session/close — Close active session for a branch (admin only)
 router.post('/close', authenticate, authorize('ADMIN'), async (req: Request, res: Response) => {
   try {
-    const activeSession = await prisma.posSession.findFirst({ where: { isActive: true } });
+    const branchId = req.body.branchId || (req.headers['x-branch-id'] as string);
+    if (!branchId) {
+      res.status(400).json({ error: 'branchId is required' });
+      return;
+    }
+
+    const activeSession = await prisma.posSession.findFirst({ where: { isActive: true, branchId } });
 
     if (!activeSession) {
-      res.status(404).json({ error: 'No active session to close' });
+      res.status(404).json({ error: 'No active session for this branch' });
       return;
     }
 

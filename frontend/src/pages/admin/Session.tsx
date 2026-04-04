@@ -4,10 +4,11 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { PageLoader } from '../../components/ui/Spinner';
 import { useToastStore } from '../../store/useToastStore';
-import { Play, Square, Clock, AlertTriangle } from 'lucide-react';
+import { Play, Square, Clock } from 'lucide-react';
 import { formatDateTime, formatCurrency } from '../../lib/formatters';
 import api from '../../lib/api';
 import type { PosSession } from '../../types';
+import { useBranchStore } from '../../store/useBranchStore';
 
 export default function Session() {
   const [activeSession, setActiveSession] = useState<PosSession | null>(null);
@@ -15,25 +16,32 @@ export default function Session() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const addToast = useToastStore((s) => s.addToast);
+  const selectedBranchId = useBranchStore((s) => s.selectedBranchId);
 
   const fetchData = async () => {
+    if (!selectedBranchId) return;
     try {
-      const [active, hist] = await Promise.all([api.get('/session/active'), api.get('/session/history')]);
+      const [active, hist] = await Promise.all([
+        api.get(`/session/active?branchId=${selectedBranchId}`), 
+        api.get(`/session/history?branchId=${selectedBranchId}`)
+      ]);
       setActiveSession(active.data); setHistory(hist.data);
     } catch {} finally { setLoading(false); }
   };
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [selectedBranchId]);
 
   const handleOpen = async () => {
+    if (!selectedBranchId) return;
     setActionLoading(true);
-    try { await api.post('/session/open'); addToast('success', 'Session opened!'); fetchData(); }
+    try { await api.post('/session/open', { branchId: selectedBranchId }); addToast('success', 'Session opened!'); fetchData(); }
     catch (err: any) { addToast('error', err.response?.data?.error || 'Failed'); } finally { setActionLoading(false); }
   };
 
   const handleClose = async () => {
+    if (!selectedBranchId) return;
     if (!confirm('Close the current session? Staff will be blocked from creating new orders.')) return;
     setActionLoading(true);
-    try { await api.post('/session/close'); addToast('info', 'Session is closing...'); fetchData(); }
+    try { await api.post('/session/close', { branchId: selectedBranchId }); addToast('info', 'Session is closing...'); fetchData(); }
     catch (err: any) { addToast('error', err.response?.data?.error || 'Failed'); } finally { setActionLoading(false); }
   };
 

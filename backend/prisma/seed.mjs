@@ -15,6 +15,12 @@ async function main() {
 
   const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 12);
 
+  // ─── Create Default Branch ────────────────────────────
+  const mainBranch = await prisma.branch.create({
+    data: { name: 'Main Branch' },
+  });
+  console.log(`  Branch: ${mainBranch.name}`);
+
   for (const email of ADMIN_EMAILS) {
     const user = await prisma.user.upsert({
       where: { email },
@@ -26,6 +32,8 @@ async function main() {
         role: Role.ADMIN,
         status: UserStatus.ACTIVE,
         emailVerified: true,
+        // Admin is connected to all branches (via many-to-many)
+        branches: { connect: [{ id: mainBranch.id }] },
       },
     });
     console.log(`  Admin user: ${user.email}`);
@@ -46,6 +54,7 @@ async function main() {
   const groundFloor = await prisma.floor.create({
     data: {
       name: 'Ground Floor',
+      branchId: mainBranch.id,
       tables: {
         create: [
           { number: 1, seats: 2, shape: TableShape.ROUND, posX: 15, posY: 20 },
@@ -63,6 +72,7 @@ async function main() {
   const upperFloor = await prisma.floor.create({
     data: {
       name: 'Upper Floor',
+      branchId: mainBranch.id,
       tables: {
         create: [
           { number: 7, seats: 2, shape: TableShape.ROUND, posX: 20, posY: 30 },

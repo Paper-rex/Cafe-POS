@@ -5,6 +5,13 @@ export interface User {
   role: 'ADMIN' | 'WAITER' | 'KITCHEN' | 'CASHIER';
   status: 'PENDING' | 'ACTIVE' | 'DISABLED';
   createdAt?: string;
+  branches?: Branch[];
+}
+
+export interface Branch {
+  id: string;
+  name: string;
+  createdAt?: string;
 }
 
 export interface PosSession {
@@ -13,13 +20,16 @@ export interface PosSession {
   closedAt: string | null;
   isActive: boolean;
   totalSales: number;
+  branchId?: string;
   openedBy?: { id: string; name: string; email: string };
+  branch?: { id: string; name: string };
   _count?: { orders: number };
 }
 
 export interface Floor {
   id: string;
   name: string;
+  branchId?: string;
   tables: Table[];
 }
 
@@ -80,6 +90,7 @@ export interface Order {
   tableId: string;
   waiterId: string;
   sessionId: string;
+  branchId?: string;
   items: OrderItem[];
   table?: { id: string; number: number };
   waiter?: { id: string; name: string; email?: string };
@@ -98,6 +109,8 @@ export interface OrderItem {
   variants: any;
   toppings: any;
   subtotal: number;
+  taxPercent: number;
+  taxAmount: number;
   isDone: boolean;
   itemStatus: ItemStatus;
   orderId: string;
@@ -111,6 +124,7 @@ export interface Payment {
   method: 'CASH' | 'CARD' | 'UPI';
   status: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   amount: number;
+  taxTotal?: number;
   amountTendered: number | null;
   change: number | null;
   upiQrData: string | null;

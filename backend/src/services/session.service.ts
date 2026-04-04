@@ -2,22 +2,24 @@ import prisma from '../lib/prisma.js';
 import sseService from './sse.service.js';
 
 class SessionService {
-  private closeMonitorInterval: NodeJS.Timeout | null = null;
+  private closeMonitorIntervals: Map<string, NodeJS.Timeout> = new Map();
 
-  async openSession(userId: string) {
-    // Check if there's already an active session
-    const existing = await prisma.posSession.findFirst({ where: { isActive: true } });
+  async openSession(userId: string, branchId: string) {
+    // Check if there's already an active session for this branch
+    const existing = await prisma.posSession.findFirst({ where: { isActive: true, branchId } });
     if (existing) {
-      throw Object.assign(new Error('A session is already active'), { status: 409 });
+      throw Object.assign(new Error('A session is already active for this branch'), { status: 409 });
     }
 
     const session = await prisma.posSession.create({
       data: {
         openedById: userId,
+        branchId,
         isActive: true,
       },
       include: {
         openedBy: { select: { id: true, name: true, email: true } },
+        branch: { select: { id: true, name: true } },
       },
     });
 
@@ -26,6 +28,8 @@ class SessionService {
         id: session.id,
         openedAt: session.openedAt,
         openedBy: session.openedBy,
+        branchId: session.branchId,
+        branch: session.branch,
       },
     });
 
@@ -49,6 +53,7 @@ class SessionService {
 
     sseService.broadcast('session:closing', {
       sessionId,
+      branchId: session.branchId,
       openOrderCount: openOrders,
       message: openOrders > 0
         ? `Session closing. ${openOrders} order(s) still pending.`
@@ -63,16 +68,17 @@ class SessionService {
       this.startCloseMonitor(sessionId);
     }
 
-    return { sessionId, openOrderCount: openOrders };
+    return { sessionId, branchId: session.branchId, openOrderCount: openOrders };
   }
 
   private startCloseMonitor(sessionId: string) {
-    // Clear existing monitor if any
-    if (this.closeMonitorInterval) {
-      clearInterval(this.closeMonitorInterval);
+    // Clear existing monitor if any for this session
+    const existingInterval = this.closeMonitorIntervals.get(sessionId);
+    if (existingInterval) {
+      clearInterval(existingInterval);
     }
 
-    this.closeMonitorInterval = setInterval(async () => {
+    const interval = setInterval(async () => {
       const openOrders = await prisma.order.count({
         where: {
           sessionId,
@@ -81,10 +87,14 @@ class SessionService {
       });
 
       if (openOrders === 0) {
-        if (this.closeMonitorInterval) clearInterval(this.closeMonitorInterval);
+        const iv = this.closeMonitorIntervals.get(sessionId);
+        if (iv) clearInterval(iv);
+        this.closeMonitorIntervals.delete(sessionId);
         await this.finalizeClose(sessionId);
       }
     }, 5000); // Check every 5 seconds
+
+    this.closeMonitorIntervals.set(sessionId, interval);
   }
 
   private async finalizeClose(sessionId: string) {
@@ -100,7 +110,7 @@ class SessionService {
     const totalSales = salesResult._sum.amount || 0;
 
     // Update session
-    await prisma.posSession.update({
+    const session = await prisma.posSession.update({
       where: { id: sessionId },
       data: {
         closedAt: new Date(),
@@ -108,14 +118,14 @@ class SessionService {
       },
     });
 
-    // Reset all tables (no active status tracked on tables; orders just won't reference them)
     sseService.broadcast('session:closed', {
       sessionId,
+      branchId: session.branchId,
       totalSales,
       closedAt: new Date().toISOString(),
     });
 
-    console.log(`📊 Session closed. Total sales: ₹${totalSales}`);
+    console.log(`📊 Session closed (branch: ${session.branchId}). Total sales: ₹${totalSales}`);
   }
 }
 

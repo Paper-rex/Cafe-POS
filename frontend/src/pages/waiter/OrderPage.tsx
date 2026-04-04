@@ -3,10 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
+
 import { PageLoader } from '../../components/ui/Spinner';
 import { useToastStore } from '../../store/useToastStore';
-import { Search, Plus, Minus, Trash2, Send, CreditCard } from 'lucide-react';
+import { Search, Plus, Minus, Send } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
 import api from '../../lib/api';
 import type { Category, Product } from '../../types';

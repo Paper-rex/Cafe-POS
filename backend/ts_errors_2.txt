@@ -1,0 +1,72 @@
+src/routes/admin.ts(120,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/admin.ts(148,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/admin.ts(171,58): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/admin.ts(186,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/admin.ts(211,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/admin.ts(231,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/admin.ts(254,41): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/branches.ts(47,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/branches.ts(62,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | StringFilter<"Order"> | undefined'.
+  Type 'string[]' is not assignable to type 'string | StringFilter<"Order"> | undefined'.
+src/routes/branches.ts(68,43): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/floors.ts(58,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/floors.ts(71,42): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/floors.ts(85,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | StringFilter<"Table"> | undefined'.
+  Type 'string[]' is not assignable to type 'string | StringFilter<"Table"> | undefined'.
+src/routes/floors.ts(108,9): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/floors.ts(124,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/floors.ts(148,9): error TS2322: Type 'string | string[]' is not assignable to type 'string | StringFilter<"Order"> | undefined'.
+  Type 'string[]' is not assignable to type 'string | StringFilter<"Order"> | undefined'.
+src/routes/floors.ts(158,42): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/orders.ts(52,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/orders.ts(166,60): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/orders.ts(196,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/orders.ts(239,37): error TS2322: Type 'string | string[]' is not assignable to type 'string | StringFilter<"OrderItem"> | undefined'.
+  Type 'string[]' is not assignable to type 'string | StringFilter<"OrderItem"> | undefined'.
+src/routes/orders.ts(244,65): error TS2322: Type 'string | string[]' is not assignable to type 'string | StringFilter<"OrderItem"> | undefined'.
+  Type 'string[]' is not assignable to type 'string | StringFilter<"OrderItem"> | undefined'.
+src/routes/orders.ts(257,58): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/orders.ts(260,18): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/orders.ts(286,60): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/orders.ts(294,42): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/payments.ts(54,56): error TS2345: Argument of type 'string | string[]' is not assignable to parameter of type 'string'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/products.ts(44,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/products.ts(57,64): error TS2322: Type 'string | string[]' is not assignable to type 'string | StringFilter<"Product"> | undefined'.
+  Type 'string[]' is not assignable to type 'string | StringFilter<"Product"> | undefined'.
+src/routes/products.ts(62,45): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/products.ts(102,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/products.ts(150,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/products.ts(165,50): error TS2322: Type 'string | string[]' is not assignable to type 'string | StringFilter<"Variant"> | undefined'.
+  Type 'string[]' is not assignable to type 'string | StringFilter<"Variant"> | undefined'.
+src/routes/products.ts(173,50): error TS2322: Type 'string | string[]' is not assignable to type 'string | StringFilter<"Topping"> | undefined'.
+  Type 'string[]' is not assignable to type 'string | StringFilter<"Topping"> | undefined'.
+src/routes/products.ts(181,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/routes/products.ts(196,16): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.

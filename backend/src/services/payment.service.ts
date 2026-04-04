@@ -18,17 +18,16 @@ class PaymentService {
     }
 
     // Calculate total
-    const total = order.items.reduce((sum, item) => sum + item.subtotal, 0);
-    const taxTotal = order.items.reduce((sum, item) => {
-      // Tax is stored on the product but we need the product's taxPercent
-      return sum; // Tax is already included in subtotal for simplicity
-    }, 0);
+    const subtotalTotal = order.items.reduce((sum, item) => sum + item.subtotal, 0);
+    const taxTotal = order.items.reduce((sum, item) => sum + item.taxAmount, 0);
+    const total = subtotalTotal + taxTotal;
 
     const payment = await prisma.payment.create({
       data: {
         orderId,
         method,
         amount: total,
+        taxTotal,
         status: 'PENDING',
       },
     });
@@ -63,7 +62,9 @@ class PaymentService {
       throw Object.assign(new Error('All items must be SERVED before payment'), { status: 400 });
     }
 
-    const total = order.items.reduce((sum, item) => sum + item.subtotal, 0);
+    const subtotalTotal = order.items.reduce((sum, item) => sum + item.subtotal, 0);
+    const taxTotal = order.items.reduce((sum, item) => sum + item.taxAmount, 0);
+    const total = subtotalTotal + taxTotal;
 
     // Get UPI config
     const config = await prisma.paymentConfig.findUnique({ where: { id: 'singleton' } });
@@ -79,6 +80,7 @@ class PaymentService {
         orderId,
         method: 'UPI',
         amount: total,
+        taxTotal,
         status: 'PENDING',
         upiQrData: upiString,
       },
@@ -108,8 +110,8 @@ class PaymentService {
     if (!payment) throw Object.assign(new Error('Payment not found'), { status: 404 });
     if (payment.status !== 'PENDING') throw Object.assign(new Error('Payment is not pending'), { status: 400 });
     
-    if (userRole === 'WAITER' && payment.method !== 'CASH') {
-      throw Object.assign(new Error('Waiters can only confirm CASH payments'), { status: 403 });
+    if (userRole === 'WAITER') {
+      throw Object.assign(new Error('Waiters cannot confirm payments'), { status: 403 });
     }
 
     let change: number | undefined;

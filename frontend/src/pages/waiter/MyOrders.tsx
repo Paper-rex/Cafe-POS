@@ -7,12 +7,16 @@ import { useToastStore } from '../../store/useToastStore';
 import { formatCurrency, formatTime, getStatusColor } from '../../lib/formatters';
 import { CheckCircle, CreditCard, Banknote, QrCode, CheckSquare } from 'lucide-react';
 import api from '../../lib/api';
-import type { Order, OrderItem } from '../../types';
+import type { Order, OrderItem, Payment } from '../../types';
+import BillModal from '../../components/shared/BillModal';
+import UpiQrModal from '../../components/shared/UpiQrModal';
 
 export default function MyOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [activeBillOrder, setActiveBillOrder] = useState<Order | null>(null);
+  const [activeUpiPayment, setActiveUpiPayment] = useState<Payment | null>(null);
   const addToast = useToastStore((s) => s.addToast);
 
   const fetchOrders = async () => {
@@ -50,12 +54,12 @@ export default function MyOrders() {
 
   const handleInitiatePayment = async (orderId: string, method: string) => {
     try {
-      const { data: payment } = await api.post('/payments', { orderId, method });
+      const { data } = await api.post('/payments', { orderId, method });
       
-      if (method === 'CASH') {
-        // Automatically confirm cash for waiters
-        await api.patch(`/payments/${payment.id}/confirm`, { amountTendered: payment.amount });
-        addToast('success', 'Cash payment marked as paid');
+      if (method === 'UPI' && data.upiQrData) {
+        setActiveUpiPayment(data);
+      } else if (method === 'CASH') {
+        addToast('success', 'Cash payment pending. Please collect and hand to Cashier.');
       } else {
         addToast('success', `${method} payment initiated`);
       }
@@ -127,9 +131,10 @@ export default function MyOrders() {
 
                 <div className="flex items-center justify-between pt-3 border-t border-surface-2">
                   <div className="flex flex-col">
-                    <span className="text-xs text-text-muted">Total</span>
-                    <span className="font-display text-lg font-bold text-text-primary">
-                      {formatCurrency(order.items.reduce((s, i) => s + i.subtotal, 0))}
+                    <span className="text-xs text-text-muted">Subtotal: {formatCurrency(order.items.reduce((s, i) => s + i.subtotal, 0))}</span>
+                    <span className="text-xs text-text-muted">Taxes: {formatCurrency(order.items.reduce((s, i) => s + (i.taxAmount || 0), 0))}</span>
+                    <span className="font-display text-lg font-bold text-text-primary mt-1">
+                      Total: {formatCurrency(order.items.reduce((s, i) => s + i.subtotal + (i.taxAmount || 0), 0))}
                     </span>
                   </div>
                   
@@ -146,6 +151,7 @@ export default function MyOrders() {
                     
                     {allItemsServed && order.status !== 'PAYMENT_PENDING' && order.status !== 'PAID' && (
                       <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setActiveBillOrder(order)}>View Bill</Button>
                         <Button size="sm" variant="outline" icon={<Banknote className="w-4 h-4" />} onClick={() => handleInitiatePayment(order.id, 'CASH')}>Cash</Button>
                         <Button size="sm" variant="outline" icon={<CreditCard className="w-4 h-4" />} onClick={() => handleInitiatePayment(order.id, 'CARD')}>Card</Button>
                         <Button size="sm" variant="outline" icon={<QrCode className="w-4 h-4" />} onClick={() => handleInitiatePayment(order.id, 'UPI')}>UPI</Button>
@@ -161,6 +167,20 @@ export default function MyOrders() {
             );
           })}
         </div>
+      )}
+      
+      
+      <BillModal 
+        order={activeBillOrder} 
+        onClose={() => setActiveBillOrder(null)} 
+      />
+
+      {activeUpiPayment && (
+        <UpiQrModal
+          upiData={activeUpiPayment.upiQrData}
+          amount={activeUpiPayment.amount}
+          onClose={() => setActiveUpiPayment(null)}
+        />
       )}
     </div>
   );

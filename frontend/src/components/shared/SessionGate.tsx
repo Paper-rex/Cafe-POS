@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Wifi, WifiOff } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSSE } from '../../hooks/useSSE';
 import { useToastStore } from '../../store/useToastStore';
 
@@ -16,7 +16,7 @@ export default function SessionGate({ hasSession, onSessionOpened }: SessionGate
   const addToast = useToastStore((s) => s.addToast);
 
   useSSE({
-    onSessionOpened: (data) => {
+    onSessionOpened: () => {
       addToast('success', 'Session opened! You can now take orders.');
       onSessionOpened?.();
     },

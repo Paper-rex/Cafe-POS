@@ -6,10 +6,11 @@ import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
 import { PageLoader } from '../../components/ui/Spinner';
 import { useToastStore } from '../../store/useToastStore';
-import { formatCurrency, formatTime, formatDuration } from '../../lib/formatters';
+import { formatCurrency, formatDuration } from '../../lib/formatters';
 import { CheckCircle, Banknote, CreditCard, Smartphone } from 'lucide-react';
 import api from '../../lib/api';
 import type { Payment } from '../../types';
+import BillModal from '../../components/shared/BillModal';
 
 export default function CashierPending() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -17,6 +18,7 @@ export default function CashierPending() {
   const [amountTendered, setAmountTendered] = useState('');
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
+  const [activeBillOrder, setActiveBillOrder] = useState<any | null>(null);
   const addToast = useToastStore((s) => s.addToast);
 
   const fetchPayments = async () => {
@@ -104,14 +106,24 @@ export default function CashierPending() {
               </div>
             )}
 
-            <Button className="w-full" size="lg" loading={confirming} onClick={handleConfirm}
-              disabled={selected.method === 'CASH' && (!amountTendered || parseFloat(amountTendered) < selected.amount)}
-              icon={<CheckCircle className="w-4 h-4" />}>
-              Confirm Payment
-            </Button>
+            <div className="flex gap-3">
+              <Button className="flex-1" variant="outline" size="lg" onClick={() => setActiveBillOrder(selected.order)}>
+                View Bill
+              </Button>
+              <Button className="flex-1" size="lg" loading={confirming} onClick={handleConfirm}
+                disabled={selected.method === 'CASH' && (!amountTendered || parseFloat(amountTendered) < selected.amount)}
+                icon={<CheckCircle className="w-4 h-4" />}>
+                Confirm
+              </Button>
+            </div>
           </Card>
         </motion.div>
       )}
+
+      <BillModal 
+        order={activeBillOrder} 
+        onClose={() => setActiveBillOrder(null)} 
+      />
     </div>
   );
 }

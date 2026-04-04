@@ -7,44 +7,59 @@ const router = Router();
 router.use(authenticate);
 router.use(authorize('ADMIN'));
 
-router.get('/dashboard', async (_req, res) => {
+router.get('/dashboard', async (req, res) => {
   try {
+    const { branchId } = req.query;
+    const branchFilter = branchId && branchId !== 'all' ? { branchId: branchId as string } : {};
+    const orderFilter = branchId && branchId !== 'all' ? { branchId: branchId as string } : {};
+    const paymentFilter = branchId && branchId !== 'all' ? { order: { branchId: branchId as string } } : {};
+
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const [todayOrders, todayRevenue, activeSession, recentOrders, topProducts] = await Promise.all([
-      prisma.order.count({ where: { createdAt: { gte: today } } }),
-      prisma.payment.aggregate({ where: { status: 'PAID', createdAt: { gte: today } }, _sum: { amount: true } }),
-      prisma.posSession.findFirst({ where: { isActive: true } }),
-      prisma.order.findMany({ take: 20, orderBy: { createdAt: 'desc' }, include: { table: { select: { number: true } }, waiter: { select: { name: true } }, items: true } }),
-      prisma.orderItem.groupBy({ by: ['name'], where: { order: { createdAt: { gte: today } } }, _sum: { quantity: true, subtotal: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 10 }),
+      prisma.order.count({ where: { ...orderFilter, createdAt: { gte: today } } }),
+      prisma.payment.aggregate({ where: { ...paymentFilter, status: 'PAID', createdAt: { gte: today } }, _sum: { amount: true } }),
+      prisma.posSession.findFirst({ where: { ...branchFilter, isActive: true } }),
+      prisma.order.findMany({ where: orderFilter, take: 20, orderBy: { createdAt: 'desc' }, include: { table: { select: { number: true } }, waiter: { select: { name: true } }, items: true } }),
+      prisma.orderItem.groupBy({ by: ['name'], where: { order: { ...orderFilter, createdAt: { gte: today } } }, _sum: { quantity: true, subtotal: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 10 }),
     ]);
 
     const days: { date: string; revenue: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0, 0, 0, 0);
       const next = new Date(d); next.setDate(next.getDate() + 1);
-      const rev = await prisma.payment.aggregate({ where: { status: 'PAID', createdAt: { gte: d, lt: next } }, _sum: { amount: true } });
+      const rev = await prisma.payment.aggregate({ where: { ...paymentFilter, status: 'PAID', createdAt: { gte: d, lt: next } }, _sum: { amount: true } });
       days.push({ date: d.toISOString().split('T')[0], revenue: rev._sum.amount || 0 });
     }
-    const activeTables = await prisma.order.findMany({ where: { status: { notIn: ['PAID', 'CANCELLED'] } }, select: { tableId: true }, distinct: ['tableId'] });
+    const activeTables = await prisma.order.findMany({ where: { ...orderFilter, status: { notIn: ['PAID', 'CANCELLED'] } }, select: { tableId: true }, distinct: ['tableId'] });
     res.json({ todayOrders, todayRevenue: todayRevenue._sum.amount || 0, activeTables: activeTables.length, activeSession: !!activeSession, recentOrders, topProducts, revenueChart: days });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Internal server error' }); }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // GET /api/reports/monthly
 router.get('/monthly', async (req, res) => {
   try {
-    const { month, year } = req.query;
+    const { month, year, branchId } = req.query;
     const m = parseInt(month as string) || new Date().getMonth() + 1;
     const y = parseInt(year as string) || new Date().getFullYear();
     const start = new Date(y, m - 1, 1);
     const end = new Date(y, m, 0, 23, 59, 59);
+
+    const orderFilter = branchId && branchId !== 'all' ? { branchId: branchId as string } : {};
+    const paymentFilter = branchId && branchId !== 'all' ? { order: { branchId: branchId as string } } : {};
+
     const [orders, revenue, topProducts] = await Promise.all([
-      prisma.order.findMany({ where: { createdAt: { gte: start, lte: end } }, include: { items: true, table: { select: { number: true } }, waiter: { select: { name: true } }, payment: true }, orderBy: { createdAt: 'desc' } }),
-      prisma.payment.aggregate({ where: { status: 'PAID', createdAt: { gte: start, lte: end } }, _sum: { amount: true } }),
-      prisma.orderItem.groupBy({ by: ['name'], where: { order: { createdAt: { gte: start, lte: end } } }, _sum: { quantity: true, subtotal: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 10 }),
+      prisma.order.findMany({ where: { ...orderFilter, createdAt: { gte: start, lte: end } }, include: { items: true, table: { select: { number: true } }, waiter: { select: { name: true } }, payment: true }, orderBy: { createdAt: 'desc' } }),
+      prisma.payment.aggregate({ where: { ...paymentFilter, status: 'PAID', createdAt: { gte: start, lte: end } }, _sum: { amount: true } }),
+      prisma.orderItem.groupBy({ by: ['name'], where: { order: { ...orderFilter, createdAt: { gte: start, lte: end } } }, _sum: { quantity: true, subtotal: true }, orderBy: { _sum: { quantity: 'desc' } }, take: 10 }),
     ]);
     res.json({ month: m, year: y, totalRevenue: revenue._sum.amount || 0, totalOrders: orders.length, orders, topProducts });
-  } catch (e) { console.error(e); res.status(500).json({ error: 'Internal server error' }); }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 export default router;
