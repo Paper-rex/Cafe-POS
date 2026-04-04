@@ -1,0 +1,231 @@
+// Prisma Schema for Café POS
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ──────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  WAITER
+  KITCHEN
+  CASHIER
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  DISABLED
+}
+
+enum TableShape {
+  ROUND
+  SQUARE
+  RECTANGLE
+}
+
+enum OrderStatus {
+  CREATED
+  SENT
+  PENDING
+  COOKING
+  READY
+  SERVED
+  PAYMENT_PENDING
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  UPI
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// ─── Models ─────────────────────────────────────────
+
+model User {
+  id              String      @id @default(uuid())
+  email           String      @unique
+  name            String?
+  password        String?
+  role            Role        @default(WAITER)
+  status          UserStatus  @default(PENDING)
+  emailVerified   Boolean     @default(false)
+  verifyToken     String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  openedSessions  PosSession[] @relation("SessionOpenedBy")
+  orders          Order[]      @relation("OrderWaiter")
+  confirmedPayments Payment[]  @relation("PaymentConfirmedBy")
+}
+
+model PosSession {
+  id          String    @id @default(uuid())
+  openedAt    DateTime  @default(now())
+  closedAt    DateTime?
+  isActive    Boolean   @default(true)
+  totalSales  Float     @default(0)
+
+  // Relations
+  openedBy    User      @relation("SessionOpenedBy", fields: [openedById], references: [id])
+  openedById  String
+  orders      Order[]
+}
+
+model Floor {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tables    Table[]
+}
+
+model Table {
+  id        String     @id @default(uuid())
+  number    Int
+  seats     Int        @default(4)
+  shape     TableShape @default(SQUARE)
+  posX      Float      @default(50)
+  posY      Float      @default(50)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relations
+  floor     Floor      @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  floorId   String
+  orders    Order[]
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String
+  icon      String?
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  products  Product[]
+}
+
+model Product {
+  id          String    @id @default(uuid())
+  name        String
+  price       Float
+  description String?
+  imageUrl    String?
+  isActive    Boolean   @default(true)
+  taxPercent  Float     @default(5)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  category    Category  @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  variants    Variant[]
+  toppings    Topping[]
+  orderItems  OrderItem[]
+}
+
+model Variant {
+  id        String  @id @default(uuid())
+  name      String  // e.g. "Size", "Sugar Level"
+  options   Json    // [{label: "S", extraPrice: 0}, {label: "M", extraPrice: 1000}]
+
+  // Relations
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+}
+
+model Topping {
+  id        String  @id @default(uuid())
+  name      String
+  price     Float
+
+  // Relations
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  orderNumber String      @unique
+  status      OrderStatus @default(CREATED)
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  table       Table       @relation(fields: [tableId], references: [id])
+  tableId     String
+  waiter      User        @relation("OrderWaiter", fields: [waiterId], references: [id])
+  waiterId    String
+  session     PosSession  @relation(fields: [sessionId], references: [id])
+  sessionId   String
+  items       OrderItem[]
+  payment     Payment?
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  name      String  // Snapshot of product name
+  unitPrice Float   // Snapshot of product price
+  quantity  Int     @default(1)
+  variants  Json?   // Snapshot: [{name: "Size", selected: "M", extraPrice: 1000}]
+  toppings  Json?   // Snapshot: [{name: "Whipped Cream", price: 500}]
+  subtotal  Float
+  isDone    Boolean @default(false)
+
+  // Relations
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  amount          Float
+  amountTendered  Float?
+  change          Float?
+  upiQrData       String?
+  razorpayId      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  order           Order         @relation(fields: [orderId], references: [id])
+  orderId         String        @unique
+  confirmedBy     User?         @relation("PaymentConfirmedBy", fields: [confirmedById], references: [id])
+  confirmedById   String?
+}
+
+model PaymentConfig {
+  id          String  @id @default("singleton")
+  cashEnabled Boolean @default(true)
+  cardEnabled Boolean @default(true)
+  upiEnabled  Boolean @default(false)
+  upiId       String?
+  upiName     String?
+  updatedAt   DateTime @updatedAt
+}

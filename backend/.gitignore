@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Environment variables – never commit secrets
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Build output
+dist/
+build/
+
+# TypeScript compiled output
+*.js.map
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+prisma/migrations/
+
+# Logs
+*.log
+npm-debug.log*
+prisma_error.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temp
+*.tmp
+*.swp

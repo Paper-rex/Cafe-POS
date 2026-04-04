@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-dark: #1B4332;
+  --brand-mid: #2D6A4F;
+  --brand-main: #40916C;
+  --brand-light: #74C69D;
+  --brand-pale: #D8F3DC;
+  --accent: #F4A261;
+  --danger: #E63946;
+  --danger-pale: rgba(230,57,70,0.12);
+  --success: #40916C;
+  --success-pale: rgba(64,145,108,0.12);
+  --warning: #F4A261;
+  --warning-pale: rgba(244,162,97,0.12);
+  --surface-0: #FFFFFF;
+  --surface-1: #F8FAF9;
+  --surface-2: #EEF4F0;
+  --border: #DDE8E2;
+  --text-primary: #0D1F17;
+  --text-secondary: #4A6B58;
+  --text-muted: #8FA99A;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text-primary);
+  background: var(--surface-1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Syne', sans-serif;
+}
+
+/* ─── Scrollbar Styling ──────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ─── Focus Ring ─────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--brand-main);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Selection ──────────────────────────────────── */
+::selection {
+  background: var(--brand-pale);
+  color: var(--brand-dark);
+}
+
+/* ─── Utilities ──────────────────────────────────── */
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-dark to-brand-main;
+  }
+}
