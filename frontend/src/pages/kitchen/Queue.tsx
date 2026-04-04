@@ -7,6 +7,7 @@ import { useToastStore } from '../../store/useToastStore';
 import { formatDuration } from '../../lib/formatters';
 import { ChevronRight, Clock, CheckSquare } from 'lucide-react';
 import api from '../../lib/api';
+import { useSSE } from '../../hooks/useSSE';
 import type { Order, OrderItem } from '../../types';
 
 const columns = [
@@ -27,7 +28,7 @@ export default function KitchenQueue() {
       // Auto-transition SENT orders to PENDING for backward compat, though the new model relies on itemStatus
       const sentOrders = data.filter((o: Order) => o.status === 'SENT');
       for (const o of sentOrders) {
-        try { await api.patch(`/orders/${o.id}/status`, { status: 'PENDING' }); } catch {}
+        try { await api.patch(`/orders/${o.id}/status`, { status: 'PENDING' }); } catch { }
       }
       if (sentOrders.length > 0) {
         const { data: refreshed } = await api.get('/orders');
@@ -35,10 +36,19 @@ export default function KitchenQueue() {
       } else {
         setOrders(data);
       }
-    } catch {}
+    } catch { }
   };
 
-  useEffect(() => { fetchOrders(); const i = setInterval(fetchOrders, 5000); return () => clearInterval(i); }, []);
+  // inside fetchOrders (approx):
+  // ...
+
+  useSSE({
+    onOrderCreated: fetchOrders,
+    onOrderStatusUpdated: fetchOrders,
+    onOrderItemUpdated: fetchOrders,
+  });
+
+  useEffect(() => { fetchOrders(); }, []);
   useEffect(() => { const i = setInterval(() => setTick(t => t + 1), 1000); return () => clearInterval(i); }, []);
 
   const toggleItemSelection = (itemId: string) => {
@@ -86,7 +96,7 @@ export default function KitchenQueue() {
                 {colOrders.map((order) => {
                   const elapsed = Date.now() - new Date(order.updatedAt).getTime();
                   const isUrgent = col.status === 'PENDING' && elapsed > 15 * 60 * 1000;
-                  
+
                   // How many items are selected in this specific group?
                   const selectedInGroup = order.items.filter(i => selectedItems.has(i.id)).length;
 
@@ -114,14 +124,14 @@ export default function KitchenQueue() {
                           })}
                         </div>
                         {col.next && (
-                          <Button 
-                            size="sm" 
-                            className="w-full" 
-                            onClick={() => moveSelectedItems(order.id, col.next!, order.items)} 
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            onClick={() => moveSelectedItems(order.id, col.next!, order.items)}
                             icon={selectedInGroup > 0 ? <CheckSquare className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                           >
-                            {selectedInGroup > 0 
-                              ? `Move ${selectedInGroup} to ${col.next}` 
+                            {selectedInGroup > 0
+                              ? `Move ${selectedInGroup} to ${col.next}`
                               : col.next === 'COOKING' ? 'Start All Cooking' : 'Mark All Ready'}
                           </Button>
                         )}

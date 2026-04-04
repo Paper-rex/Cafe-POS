@@ -3,6 +3,7 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
+import sseService from '../services/sse.service.js';
 import '../types/index.js';
 
 const router = Router();
@@ -132,6 +133,8 @@ router.patch('/tables/:id', authorize('ADMIN'), async (req: Request, res: Respon
         ...(isActive !== undefined && { isActive }),
       },
     });
+
+    sseService.broadcast('floor:table_updated', { table });
 
     res.json(table);
   } catch (error: any) {

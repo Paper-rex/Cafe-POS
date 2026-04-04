@@ -22,22 +22,64 @@ export default function OrderPage() {
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState('');
+  const [searchDebounce, setSearchDebounce] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [sending, setSending] = useState(false);
   const addToast = useToastStore((s) => s.addToast);
 
   useEffect(() => {
-    Promise.all([api.get('/categories'), api.get('/products?active=true')]).then(([c, p]) => {
-      setCategories(c.data); setProducts(p.data);
-      if (c.data.length) setSelectedCat(c.data[0].id);
-    }).finally(() => setLoading(false));
+    const handler = setTimeout(() => {
+      setSearchDebounce(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  const fetchCategories = async () => {
+    try {
+      const cRes = await api.get('/categories');
+      setCategories(cRes.data);
+    } catch (err) { }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      if (page === 1 && !loading) setIsFetching(true);
+      else setIsFetchingMore(true);
+      
+      const pRes = await api.get('/products', { 
+        params: { active: true, page, limit: 20, categoryId: selectedCat || undefined, search: searchDebounce } 
+      });
+      
+      if (page === 1) {
+         setProducts(pRes.data.data);
+      } else {
+         setProducts(prev => [...prev, ...pRes.data.data]);
+      }
+      setTotalPages(pRes.data.pagination.totalPages || 1);
+    } catch {} finally { 
+       setLoading(false); 
+       setIsFetching(false);
+       setIsFetchingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
   }, []);
 
-  const filtered = products.filter(p => {
-    if (selectedCat && p.categoryId !== selectedCat) return false;
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  useEffect(() => {
+    fetchProducts();
+  }, [page, selectedCat, searchDebounce]);
+
+  const handleCategoryClick = (catId: string | null) => {
+    setSelectedCat(catId);
+    setPage(1);
+  };
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -72,8 +114,12 @@ export default function OrderPage() {
       {/* Left: Categories */}
       <div className="w-48 shrink-0 bg-white rounded-2xl border border-border p-3 space-y-1 overflow-y-auto">
         <div className="px-3 py-2 mb-2"><p className="font-display text-sm font-bold text-text-primary">Categories</p></div>
+        <button onClick={() => handleCategoryClick(null)}
+          className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${!selectedCat ? 'bg-brand-main text-white' : 'text-text-secondary hover:bg-surface-2'}`}>
+          All Products
+        </button>
         {categories.map(cat => (
-          <button key={cat.id} onClick={() => setSelectedCat(cat.id)}
+          <button key={cat.id} onClick={() => handleCategoryClick(cat.id)}
             className={`w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${selectedCat === cat.id ? 'bg-brand-main text-white' : 'text-text-secondary hover:bg-surface-2'}`}>
             {cat.icon} {cat.name}
           </button>
@@ -87,8 +133,14 @@ export default function OrderPage() {
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..."
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:ring-2 focus:ring-brand-pale focus:border-brand-main" />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 overflow-y-auto flex-1">
-          {filtered.map(product => {
+        <div className="flex-1 flex flex-col relative pb-6">
+          {isFetching && !loading && (
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
+              <PageLoader />
+            </div>
+          )}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 overflow-y-auto">
+            {products.map(product => {
             const inCart = cart.find(i => i.productId === product.id);
             return (
               <motion.div key={product.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -103,6 +155,21 @@ export default function OrderPage() {
               </motion.div>
             );
           })}
+          
+          {products.length === 0 && !loading && (
+            <div className="col-span-full text-center py-10 text-text-muted">
+              No products found.
+            </div>
+          )}
+
+          {page < totalPages && (
+            <div className="col-span-full pt-4 flex justify-center mt-auto">
+              <Button variant="outline" loading={isFetchingMore} onClick={() => setPage(p => p + 1)}>
+                Load More
+              </Button>
+            </div>
+          )}
+        </div>
         </div>
       </div>
 

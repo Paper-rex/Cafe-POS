@@ -25,8 +25,13 @@ export default function MyOrders() {
       setOrders(data.filter((o: Order) => o.status !== 'CANCELLED' && o.status !== 'PAID')); 
     } catch {} finally { setLoading(false); }
   };
-  
-  useEffect(() => { fetchOrders(); const i = setInterval(fetchOrders, 5000); return () => clearInterval(i); }, []);
+  useSSE({
+    onOrderStatusUpdated: fetchOrders,
+    onPaymentConfirmed: fetchOrders,
+    onOrderItemUpdated: fetchOrders,
+  });
+
+  useEffect(() => { fetchOrders(); }, []);
 
   const toggleItemSelection = (itemId: string) => {
     setSelectedItems(prev => {

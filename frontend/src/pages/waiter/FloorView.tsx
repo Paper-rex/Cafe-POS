@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card } from '../../components/ui/Card';
 import { PageLoader } from '../../components/ui/Spinner';
+import { useSSE } from '../../hooks/useSSE';
 import api from '../../lib/api';
 import type { Floor } from '../../types';
 
@@ -16,24 +17,31 @@ export default function FloorView() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const fetchData = async () => {
+    try {
+      const fRes = await api.get('/floors');
+      setFloors(fRes.data);
+    } catch (err) {
+      console.error('Failed to fetch floors:', err);
+    }
+    try {
+      const oRes = await api.get('/orders?status=CREATED&status=SENT&status=PENDING&status=COOKING&status=READY&status=SERVED&status=PAYMENT_PENDING');
+      setOccupiedTables(new Set(oRes.data.map((o: any) => o.tableId)));
+    } catch (err) {
+      console.error('Failed to fetch orders:', err);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const fRes = await api.get('/floors');
-        setFloors(fRes.data);
-      } catch (err) {
-        console.error('Failed to fetch floors:', err);
-      }
-      try {
-        const oRes = await api.get('/orders?status=CREATED&status=SENT&status=PENDING&status=COOKING&status=READY&status=SERVED&status=PAYMENT_PENDING');
-        setOccupiedTables(new Set(oRes.data.map((o: any) => o.tableId)));
-      } catch (err) {
-        console.error('Failed to fetch orders:', err);
-      }
-      setLoading(false);
-    };
     fetchData();
   }, []);
+
+  useSSE({
+    onOrderCreated: fetchData,
+    onOrderStatusUpdated: fetchData,
+    onPaymentConfirmed: fetchData,
+  });
 
   if (loading) return <PageLoader />;
 
