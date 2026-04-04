@@ -48,6 +48,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/events', eventRoutes);
+app.use()
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });

@@ -8,7 +8,7 @@ import { Input } from '../../components/ui/Input';
 import { PageLoader } from '../../components/ui/Spinner';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { useToastStore } from '../../store/useToastStore';
-import { Plus, Package as PackageIcon, Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Package as PackageIcon, Pencil, Trash2, ToggleLeft, ToggleRight, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
 import api from '../../lib/api';
 import type { Category, Product } from '../../types';
@@ -18,6 +18,12 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState('');
+  const [searchDebounce, setSearchDebounce] = useState('');
   
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -31,16 +37,51 @@ export default function Products() {
   
   const addToast = useToastStore((s) => s.addToast);
 
-  const fetchData = async () => {
-    try {
-      const [cRes, pRes] = await Promise.all([api.get('/categories'), api.get('/products')]);
-      setCategories(cRes.data); setProducts(pRes.data);
-      if (!selectedCat && cRes.data.length > 0) setSelectedCat(cRes.data[0].id);
-    } catch {} finally { setLoading(false); }
-  };
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchDebounce(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [search]);
 
-  const filteredProducts = selectedCat ? products.filter(p => p.categoryId === selectedCat) : products;
+  const fetchCategories = async () => {
+    try {
+      const cRes = await api.get('/categories');
+      setCategories(cRes.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      setIsFetching(true);
+      const pRes = await api.get('/products', { 
+        params: { page, limit: 15, categoryId: selectedCat || undefined, search: searchDebounce } 
+      });
+      setProducts(pRes.data.data);
+      setTotalPages(pRes.data.pagination.totalPages || 1);
+    } catch (err) {
+      console.error(err);
+    } finally { 
+      setIsFetching(false);
+      setLoading(false); 
+    }
+  };
+
+  const fetchData = async () => {
+    await fetchCategories();
+    await fetchProducts();
+  };
+  
+  useEffect(() => { fetchCategories(); }, []);
+  useEffect(() => { fetchProducts(); }, [page, selectedCat, searchDebounce]);
+
+  const handleCategoryClick = (catId: string | null) => {
+    setSelectedCat(catId);
+    setPage(1);
+  };
 
   const handleAddCategory = async () => {
     if (!catName) return; setFormLoading(true);
@@ -108,6 +149,11 @@ export default function Products() {
       <div className="flex items-center justify-between mb-8">
         <div><h1 className="font-display text-3xl font-bold text-text-primary">Products</h1><p className="text-text-secondary mt-1">Manage menu items</p></div>
         <div className="flex gap-3">
+          <div className="relative w-64 max-w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..."
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-white text-sm focus:ring-2 focus:ring-brand-pale focus:border-brand-main" />
+          </div>
           <Button variant="outline" icon={<Plus className="w-4 h-4" />} onClick={() => setShowAddCategory(true)}>Add Category</Button>
           <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setProductForm({ id: '', name: '', price: '', description: '', categoryId: selectedCat || '', taxPercent: '5' }); setShowAddProduct(true); }}>Add Product</Button>
         </div>
@@ -116,13 +162,13 @@ export default function Products() {
       <div className="flex gap-6">
         {/* Category Sidebar */}
         <div className="w-56 shrink-0 space-y-1">
-          <button onClick={() => setSelectedCat(null)}
+          <button onClick={() => handleCategoryClick(null)}
             className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${!selectedCat ? 'bg-brand-main text-white' : 'text-text-secondary hover:bg-surface-2'}`}>
-            All ({products.length})
+            All Categories
           </button>
           {categories.map(cat => (
             <div key={cat.id} className="relative group">
-              <button onClick={() => setSelectedCat(cat.id)}
+              <button onClick={() => handleCategoryClick(cat.id)}
                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-colors pr-10 ${selectedCat === cat.id ? 'bg-brand-main text-white' : 'text-text-secondary hover:bg-surface-2'}`}>
                 {cat.icon} {cat.name} ({cat._count?.products || 0})
               </button>
@@ -137,8 +183,14 @@ export default function Products() {
         </div>
 
         {/* Product Grid */}
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredProducts.map((product, i) => (
+        <div className="flex-1 flex flex-col relative">
+          {isFetching && !loading && (
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
+              <PageLoader />
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+            {products.map((product, i) => (
             <motion.div key={product.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Card className={`p-5 group ${!product.isActive ? 'bg-surface-1/50 border-dashed border-border' : ''}`} hover>
                 <div className="flex items-start justify-between mb-3">
@@ -169,10 +221,19 @@ export default function Products() {
               </Card>
             </motion.div>
           ))}
-          {filteredProducts.length === 0 && (
+          {products.length === 0 && (
             <div className="col-span-full text-center py-16">
               <PackageIcon className="w-12 h-12 text-text-muted mx-auto mb-3" />
-              <p className="text-text-secondary">No products in this category</p>
+              <p className="text-text-secondary">No products found</p>
+            </div>
+          )}
+          </div>
+          
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 py-4 mt-auto">
+               <Button variant="outline" size="sm" disabled={page <= 1 || isFetching} onClick={() => setPage(p => p - 1)} icon={<ChevronLeft className="w-4 h-4"/>}>Prev</Button>
+               <span className="text-sm font-medium text-text-secondary">Page {page} of {totalPages}</span>
+               <Button variant="outline" size="sm" disabled={page >= totalPages || isFetching} onClick={() => setPage(p => p + 1)} icon={<ChevronRight className="w-4 h-4"/>}>Next</Button>
             </div>
           )}
         </div>

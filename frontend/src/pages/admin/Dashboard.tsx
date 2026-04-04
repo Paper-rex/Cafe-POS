@@ -6,6 +6,7 @@ import { PageLoader } from '../../components/ui/Spinner';
 import { DollarSign, ShoppingBag, UtensilsCrossed, Zap } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatCurrency, formatTime, getStatusColor } from '../../lib/formatters';
+import { useSSE } from '../../hooks/useSSE';
 import api from '../../lib/api';
 import type { DashboardData } from '../../types';
 
@@ -29,12 +30,24 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchDashboard = () => {
     api.get('/reports/dashboard').then(({ data }) => {
       setData(data);
       setLoading(false);
     }).catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchDashboard();
   }, []);
+
+  useSSE({
+    onOrderCreated: fetchDashboard,
+    onOrderStatusUpdated: fetchDashboard,
+    onPaymentConfirmed: fetchDashboard,
+    onSessionOpened: fetchDashboard,
+    onSessionClosed: fetchDashboard,
+  });
 
   if (loading) return <PageLoader />;
   if (!data) return <p className="text-text-muted">Failed to load dashboard</p>;

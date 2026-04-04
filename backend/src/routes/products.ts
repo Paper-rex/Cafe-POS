@@ -67,29 +67,50 @@ categoriesRouter.delete('/:id', authenticate, authorize('ADMIN'), async (req: Re
   }
 });
 
-// ═══════════════════════════════════════════════════════
-// PRODUCTS
-// ═══════════════════════════════════════════════════════
 
 // GET /api/products
 productsRouter.get('/', authenticate, async (req: Request, res: Response) => {
   try {
-    const { categoryId, active } = req.query;
+    const { categoryId, active, search, page = '1', limit = '15' } = req.query;
     const where: any = {};
     if (categoryId) where.categoryId = categoryId;
     if (active === 'true') where.isActive = true;
     if (active === 'false') where.isActive = false;
+    if (search && typeof search === 'string') {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
-    const products = await prisma.product.findMany({
-      where,
-      include: {
-        category: { select: { id: true, name: true, icon: true } },
-        variants: true,
-        toppings: true,
-      },
-      orderBy: { name: 'asc' },
+    const pageNum = parseInt(page as string, 10) || 1;
+    const limitNum = parseInt(limit as string, 10) || 15;
+    const skip = (pageNum - 1) * limitNum;
+
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: {
+          category: { select: { id: true, name: true, icon: true } },
+          variants: true,
+          toppings: true,
+        },
+        orderBy: { name: 'asc' },
+        skip,
+        take: limitNum,
+      }),
+      prisma.product.count({ where })
+    ]);
+
+    res.json({
+      data: products,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      }
     });
-    res.json(products);
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -109,7 +130,6 @@ productsRouter.get('/:id', authenticate, async (req: Request, res: Response) => 
   }
 });
 
-// POST /api/products
 productsRouter.post('/', authenticate, authorize('ADMIN'), async (req: Request, res: Response) => {
   try {
     const { name, price, description, imageUrl, categoryId, taxPercent, variants, toppings } = req.body;
@@ -202,5 +222,21 @@ productsRouter.delete('/:id', authenticate, authorize('ADMIN'), async (req: Requ
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+productsRouter.get('/api/products/page=${page}&limit=${limit}', async (req: Request, res: Response) => {
+  const page = 1
+  const limit = 10
+  const nextstart = (page - 1) * limit
+
+  const [products] = await prisma.product.findMany({
+    skip: nextstart,
+    take: limit,
+    where: { isActive: true },
+    include: { category: true },
+    orderBy: { createdAt: 'asc' }
+  })
+  res.json(products)
+})
+
 
 export default { categories: categoriesRouter, products: productsRouter };

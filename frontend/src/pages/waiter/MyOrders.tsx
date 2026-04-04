@@ -7,6 +7,7 @@ import { useToastStore } from '../../store/useToastStore';
 import { formatCurrency, formatTime, getStatusColor } from '../../lib/formatters';
 import { CheckCircle, CreditCard } from 'lucide-react';
 import api from '../../lib/api';
+import { useSSE } from '../../hooks/useSSE';
 import type { Order } from '../../types';
 
 export default function MyOrders() {
@@ -18,7 +19,15 @@ export default function MyOrders() {
     try { const { data } = await api.get('/orders'); setOrders(data.filter((o: Order) => o.status !== 'CANCELLED')); }
     catch {} finally { setLoading(false); }
   };
-  useEffect(() => { fetchOrders(); const i = setInterval(fetchOrders, 5000); return () => clearInterval(i); }, []);
+
+// ...
+  useSSE({
+    onOrderStatusUpdated: fetchOrders,
+    onPaymentConfirmed: fetchOrders,
+    onOrderItemUpdated: fetchOrders,
+  });
+
+  useEffect(() => { fetchOrders(); }, []);
 
   const handleMarkServed = async (orderId: string) => {
     try { await api.patch(`/orders/${orderId}/status`, { status: 'SERVED' }); addToast('success', 'Marked as served'); fetchOrders(); }

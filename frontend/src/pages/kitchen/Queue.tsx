@@ -7,6 +7,7 @@ import { useToastStore } from '../../store/useToastStore';
 import { formatDuration } from '../../lib/formatters';
 import { ChevronRight, Clock, PartyPopper } from 'lucide-react';
 import api from '../../lib/api';
+import { useSSE } from '../../hooks/useSSE';
 import type { Order } from '../../types';
 
 const columns = [
@@ -34,7 +35,16 @@ export default function KitchenQueue() {
     } catch {}
   };
 
-  useEffect(() => { fetchOrders(); const i = setInterval(fetchOrders, 5000); return () => clearInterval(i); }, []);
+// inside fetchOrders (approx):
+  // ...
+
+  useSSE({
+    onOrderCreated: fetchOrders,
+    onOrderStatusUpdated: fetchOrders,
+    onOrderItemUpdated: fetchOrders,
+  });
+
+  useEffect(() => { fetchOrders(); }, []);
   useEffect(() => { const i = setInterval(() => setTick(t => t + 1), 1000); return () => clearInterval(i); }, []);
 
   const moveOrder = async (orderId: string, newStatus: string) => {

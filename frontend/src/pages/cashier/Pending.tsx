@@ -9,6 +9,7 @@ import { useToastStore } from '../../store/useToastStore';
 import { formatCurrency, formatTime, formatDuration } from '../../lib/formatters';
 import { CheckCircle, Banknote, CreditCard, Smartphone } from 'lucide-react';
 import api from '../../lib/api';
+import { useSSE } from '../../hooks/useSSE';
 import type { Payment } from '../../types';
 
 export default function CashierPending() {
@@ -22,7 +23,14 @@ export default function CashierPending() {
   const fetchPayments = async () => {
     try { const { data } = await api.get('/payments/pending'); setPayments(data); } catch {} finally { setLoading(false); }
   };
-  useEffect(() => { fetchPayments(); const i = setInterval(fetchPayments, 5000); return () => clearInterval(i); }, []);
+
+// ...
+  useSSE({
+    onOrderStatusUpdated: fetchPayments,
+    onPaymentConfirmed: fetchPayments,
+  });
+
+  useEffect(() => { fetchPayments(); }, []);
 
   const handleConfirm = async () => {
     if (!selected) return; setConfirming(true);
