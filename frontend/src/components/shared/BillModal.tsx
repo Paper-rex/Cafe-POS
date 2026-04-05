@@ -14,6 +14,8 @@ export default function BillModal({ order, onClose, onPrint }: BillModalProps) {
   
   if (!order) return null;
 
+  const formatReceiptCurrency = (amt: number) => formatCurrency(amt).replace('₹', 'Rs. ');
+
   const handlePrint = () => {
     window.print();
     if (onPrint) onPrint();
@@ -38,7 +40,7 @@ export default function BillModal({ order, onClose, onPrint }: BillModalProps) {
     const bodyData = order.items.map(item => [
       item.quantity.toString(),
       item.name,
-      formatCurrency(item.subtotal)
+      formatReceiptCurrency(item.subtotal)
     ]);
 
     autoTable(doc, {
@@ -54,14 +56,14 @@ export default function BillModal({ order, onClose, onPrint }: BillModalProps) {
     const finalY = (doc as any).lastAutoTable.finalY + 5;
     
     doc.text('Subtotal:', 14, finalY);
-    doc.text(formatCurrency(subtotal), 66, finalY, { align: 'right' });
+    doc.text(formatReceiptCurrency(subtotal), 66, finalY, { align: 'right' });
     
     doc.text('Taxes:', 14, finalY + 4);
-    doc.text(formatCurrency(taxAmount), 66, finalY + 4, { align: 'right' });
+    doc.text(formatReceiptCurrency(taxAmount), 66, finalY + 4, { align: 'right' });
     
     doc.setFont('helvetica', 'bold');
     doc.text('Total:', 14, finalY + 10);
-    doc.text(formatCurrency(total), 66, finalY + 10, { align: 'right' });
+    doc.text(formatReceiptCurrency(total), 66, finalY + 10, { align: 'right' });
 
     doc.setFont('helvetica', 'normal');
     doc.text('Thank you for visiting!', 40, finalY + 20, { align: 'center' });
@@ -137,7 +139,7 @@ export default function BillModal({ order, onClose, onPrint }: BillModalProps) {
                           <div key={i} className="text-xs text-gray-500">+ {t.name}</div>
                         ))}
                       </td>
-                      <td className="text-right py-1">{formatCurrency(item.subtotal)}</td>
+                      <td className="text-right py-1">{formatReceiptCurrency(item.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -148,15 +150,15 @@ export default function BillModal({ order, onClose, onPrint }: BillModalProps) {
             <div className="space-y-1 mb-6 text-sm">
               <div className="flex justify-between text-gray-600">
                 <span>Subtotal</span>
-                <span>{formatCurrency(subtotal)}</span>
+                <span>{formatReceiptCurrency(subtotal)}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Taxes</span>
-                <span>{formatCurrency(taxAmount)}</span>
+                <span>{formatReceiptCurrency(taxAmount)}</span>
               </div>
               <div className="flex justify-between font-bold text-base mt-2 pt-2 border-t border-dashed border-gray-300">
                 <span>Total</span>
-                <span>{formatCurrency(total)}</span>
+                <span>{formatReceiptCurrency(total)}</span>
               </div>
             </div>
 
