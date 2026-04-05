@@ -19,12 +19,12 @@ export function fromPaise(paise: number): number {
 
 // ─── Status Transitions ────────────────────────────
 export const ORDER_STATUS_TRANSITIONS: Record<string, { next: string; roles: string[] }[]> = {
-  CREATED:          [{ next: 'SENT', roles: ['WAITER'] }],
+  CREATED:          [{ next: 'SENT', roles: ['WAITER', 'ADMIN'] }],
   SENT:             [{ next: 'PENDING', roles: ['KITCHEN', 'ADMIN'] }],
-  PENDING:          [{ next: 'COOKING', roles: ['KITCHEN'] }],
-  COOKING:          [{ next: 'READY', roles: ['KITCHEN'] }],
-  READY:            [{ next: 'SERVED', roles: ['WAITER'] }],
-  SERVED:           [{ next: 'PAYMENT_PENDING', roles: ['WAITER'] }],
+  PENDING:          [{ next: 'COOKING', roles: ['KITCHEN', 'ADMIN'] }],
+  COOKING:          [{ next: 'READY', roles: ['KITCHEN', 'ADMIN'] }],
+  READY:            [{ next: 'SERVED', roles: ['WAITER', 'ADMIN'] }],
+  SERVED:           [{ next: 'PAYMENT_PENDING', roles: ['WAITER', 'ADMIN'] }],
   PAYMENT_PENDING:  [{ next: 'PAID', roles: ['CASHIER', 'ADMIN'] }], // Cash confirmation only by cashier/admin
 };
 
