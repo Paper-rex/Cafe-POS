@@ -9,6 +9,7 @@ import { CheckCircle, CreditCard, Banknote, QrCode, CheckSquare } from 'lucide-r
 import api from '../../lib/api';
 import { useSSE } from '../../hooks/useSSE';
 import type { Order, OrderItem, Payment } from '../../types';
+import { useSSE } from '../../hooks/useSSE';
 import BillModal from '../../components/shared/BillModal';
 import UpiQrModal from '../../components/shared/UpiQrModal';
 
@@ -90,9 +91,10 @@ export default function MyOrders() {
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {orders.map(order => {
-            const allItemsServed = order.items.length > 0 && order.items.every(i => i.itemStatus === 'SERVED');
-            const readyItems = order.items.filter(i => i.itemStatus === 'READY');
-            const selectedReadyCount = readyItems.filter(i => selectedItems.has(i.id)).length;
+            const items = order.items || [];
+            const allItemsServed = items.length > 0 && items.every((i: any) => i.itemStatus === 'SERVED');
+            const readyItems = items.filter((i: any) => i.itemStatus === 'READY');
+            const selectedReadyCount = readyItems.filter((i: any) => selectedItems.has(i.id)).length;
             const paymentStatus = order.payment?.status || 'UNPAID';
             const paymentMethod = order.payment?.method || null;
             const isPaid = paymentStatus === 'PAID';
@@ -119,7 +121,7 @@ export default function MyOrders() {
                 {/* Items List */}
                 <div className="space-y-2 mb-4 bg-surface-1 p-3 rounded-xl border border-surface-2">
                   <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Order Items</h4>
-                  {order.items.map(item => {
+                  {items.map((item: any) => {
                     const isReady = item.itemStatus === 'READY';
                     const isSelected = selectedItems.has(item.id);
                     return (
@@ -152,10 +154,10 @@ export default function MyOrders() {
 
                 <div className="flex items-center justify-between pt-3 border-t border-surface-2">
                   <div className="flex flex-col">
-                    <span className="text-xs text-text-muted">Subtotal: {formatCurrency(order.items.reduce((s, i) => s + i.subtotal, 0))}</span>
-                    <span className="text-xs text-text-muted">Taxes: {formatCurrency(order.items.reduce((s, i) => s + (i.taxAmount || 0), 0))}</span>
+                    <span className="text-xs text-text-muted">Subtotal: {formatCurrency(items.reduce((s: number, i: any) => s + (i.subtotal || 0), 0))}</span>
+                    <span className="text-xs text-text-muted">Taxes: {formatCurrency(items.reduce((s: number, i: any) => s + (i.taxAmount || 0), 0))}</span>
                     <span className="font-display text-lg font-bold text-text-primary mt-1">
-                      Total: {formatCurrency(order.items.reduce((s, i) => s + i.subtotal + (i.taxAmount || 0), 0))}
+                      Total: {formatCurrency(items.reduce((s: number, i: any) => s + (i.subtotal || 0) + (i.taxAmount || 0), 0))}
                     </span>
                   </div>
                   
