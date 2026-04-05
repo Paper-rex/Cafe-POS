@@ -16,17 +16,33 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   try {
     const payload = verifyAccessToken(token);
 
-    // Fetch the user's branch IDs
+    // Load live role & branches from DB so permission checks match the current user record
+    // (JWT role can be stale after an admin changes roles without re-login).
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { branches: { select: { id: true } } },
+      select: {
+        role: true,
+        email: true,
+        status: true,
+        branches: { select: { id: true } },
+      },
     });
+
+    if (!user) {
+      res.status(401).json({ error: 'User not found', code: 'UNAUTHORIZED' });
+      return;
+    }
+
+    if (user.status === 'DISABLED') {
+      res.status(403).json({ error: 'Account is disabled' });
+      return;
+    }
 
     req.user = {
       userId: payload.userId,
-      role: payload.role,
-      email: payload.email,
-      branchIds: user?.branches.map(b => b.id) || [],
+      role: user.role,
+      email: user.email,
+      branchIds: user.branches.map((b) => b.id),
     };
     next();
   } catch (error: any) {

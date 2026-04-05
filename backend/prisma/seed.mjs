@@ -1,18 +1,19 @@
 import { PrismaClient, Role, UserStatus, TableShape } from './generated/prisma/client.js';
 import bcrypt from 'bcryptjs';
+import { EXTRA_PRODUCTS_BY_CATEGORY } from './product-catalog-extra.mjs';
+import {
+  getAdminEmails,
+  getAdminPassword,
+  getStaffPassword,
+  getDefaultStaff,
+} from './seed-config.mjs';
 
 const prisma = new PrismaClient();
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@cafepos.local')
-  .split(',')
-  .map((e) => e.trim());
-const ADMIN_PASSWORD = process.env.ADMIN_DEFAULT_PASSWORD || 'Admin@123';
-const STAFF_PASSWORD = process.env.STAFF_DEFAULT_PASSWORD || 'Staff@123';
-const DEFAULT_STAFF = [
-  { email: 'waiter@cafepos.local', name: 'Waiter', role: Role.WAITER },
-  { email: 'kitchen@cafepos.local', name: 'Kitchen', role: Role.KITCHEN },
-  { email: 'cashier@cafepos.local', name: 'Cashier', role: Role.CASHIER },
-];
+const ADMIN_EMAILS = getAdminEmails();
+const ADMIN_PASSWORD = getAdminPassword();
+const STAFF_PASSWORD = getStaffPassword();
+const DEFAULT_STAFF = getDefaultStaff();
 
 async function main() {
   console.log('Seeding database...\n');
@@ -36,11 +37,23 @@ async function main() {
         role: Role.ADMIN,
         status: UserStatus.ACTIVE,
         emailVerified: true,
-        // Admin is connected to all branches (via many-to-many)
         branches: { connect: [{ id: mainBranch.id }] },
       },
     });
     console.log(`  Admin user: ${user.email}`);
+  }
+
+  for (const email of ADMIN_EMAILS) {
+    const u = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, branches: { select: { id: true } } },
+    });
+    if (u && !u.branches.some((b) => b.id === mainBranch.id)) {
+      await prisma.user.update({
+        where: { id: u.id },
+        data: { branches: { connect: { id: mainBranch.id } } },
+      });
+    }
   }
 
   const hashedStaffPassword = await bcrypt.hash(STAFF_PASSWORD, 12);
@@ -60,9 +73,23 @@ async function main() {
         password: hashedStaffPassword,
         status: UserStatus.ACTIVE,
         emailVerified: true,
+        branches: { connect: [{ id: mainBranch.id }] },
       },
     });
     console.log(`  Staff user: ${user.email} (${user.role})`);
+  }
+
+  for (const staff of DEFAULT_STAFF) {
+    const u = await prisma.user.findUnique({
+      where: { email: staff.email },
+      select: { id: true, branches: { select: { id: true } } },
+    });
+    if (u && !u.branches.some((b) => b.id === mainBranch.id)) {
+      await prisma.user.update({
+        where: { id: u.id },
+        data: { branches: { connect: { id: mainBranch.id } } },
+      });
+    }
   }
 
   await prisma.paymentConfig.upsert({
@@ -205,11 +232,14 @@ async function main() {
             description: '20-hour cold steeped coffee',
             taxPercent: 5,
           },
+          ...EXTRA_PRODUCTS_BY_CATEGORY.Coffee,
         ],
       },
     },
   });
-  console.log(`  Category: ${coffeeCategory.name} (4 products)`);
+  console.log(
+    `  Category: ${coffeeCategory.name} (${4 + EXTRA_PRODUCTS_BY_CATEGORY.Coffee.length} products)`
+  );
 
   const teaCategory = await prisma.category.create({
     data: {
@@ -259,11 +289,14 @@ async function main() {
               ],
             },
           },
+          ...EXTRA_PRODUCTS_BY_CATEGORY.Tea,
         ],
       },
     },
   });
-  console.log(`  Category: ${teaCategory.name} (3 products)`);
+  console.log(
+    `  Category: ${teaCategory.name} (${3 + EXTRA_PRODUCTS_BY_CATEGORY.Tea.length} products)`
+  );
 
   const snacksCategory = await prisma.category.create({
     data: {
@@ -322,11 +355,14 @@ async function main() {
               ],
             },
           },
+          ...EXTRA_PRODUCTS_BY_CATEGORY.Snacks,
         ],
       },
     },
   });
-  console.log(`  Category: ${snacksCategory.name} (4 products)`);
+  console.log(
+    `  Category: ${snacksCategory.name} (${4 + EXTRA_PRODUCTS_BY_CATEGORY.Snacks.length} products)`
+  );
 
   const dessertsCategory = await prisma.category.create({
     data: {
@@ -371,11 +407,14 @@ async function main() {
             description: 'Classic Italian coffee-flavored dessert',
             taxPercent: 5,
           },
+          ...EXTRA_PRODUCTS_BY_CATEGORY.Desserts,
         ],
       },
     },
   });
-  console.log(`  Category: ${dessertsCategory.name} (3 products)`);
+  console.log(
+    `  Category: ${dessertsCategory.name} (${3 + EXTRA_PRODUCTS_BY_CATEGORY.Desserts.length} products)`
+  );
 
   console.log('\nSeeding complete.\n');
 }

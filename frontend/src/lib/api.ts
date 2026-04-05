@@ -36,12 +36,42 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+function requestHadBearer(config: { headers?: unknown }): boolean {
+  const raw = config.headers;
+  if (!raw) return false;
+  let auth: string | undefined;
+  if (typeof (raw as { get?: (k: string) => string }).get === 'function') {
+    const h = raw as { get: (k: string) => string | undefined };
+    auth = h.get('Authorization') ?? h.get('authorization');
+  } else {
+    const h = raw as Record<string, string>;
+    auth = h.Authorization ?? h.authorization;
+  }
+  return typeof auth === 'string' && auth.startsWith('Bearer ');
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    if (!originalRequest) return Promise.reject(error);
 
-    if (error.response?.status === 401 && !originalRequest._retry && error.response?.data?.code === 'TOKEN_EXPIRED') {
+    const status = error.response?.status;
+    const code = error.response?.data?.code as string | undefined;
+    const url = String(originalRequest.url || '');
+
+    // Retry once after refresh when access token is expired OR rejected (bad/corrupt/stale JWT).
+    // Backend returns TOKEN_EXPIRED or UNAUTHORIZED (e.g. "Invalid token"); we only refresh if
+    // this request actually sent a Bearer token (skip login / public calls).
+    const shouldTryRefresh =
+      status === 401 &&
+      !originalRequest._retry &&
+      requestHadBearer(originalRequest) &&
+      !url.includes('/auth/login') &&
+      !url.includes('/auth/refresh') &&
+      (code === 'TOKEN_EXPIRED' || code === 'UNAUTHORIZED');
+
+    if (shouldTryRefresh) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });

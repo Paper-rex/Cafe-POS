@@ -2,14 +2,13 @@ import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
 import sseService from '../services/sse.service.js';
+import { withFallbackProductImages } from '../services/product-image.service.js';
 
 const router = Router();
 
 const ACTIVE_ORDER_STATUSES = ['CREATED', 'SENT', 'PENDING', 'COOKING', 'READY', 'SERVED', 'PAYMENT_PENDING'] as const;
 const TRACK_SECRET = process.env.SELF_ORDER_TRACK_SECRET || process.env.JWT_ACCESS_SECRET || 'dev-self-order-secret';
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
-const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
-const PEXELS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 function paramOrderId(raw: string | string[] | undefined): string | undefined {
   if (raw === undefined) return undefined;
@@ -17,59 +16,11 @@ function paramOrderId(raw: string | string[] | undefined): string | undefined {
 }
 
 const idempotencyCache = new Map<string, { orderId: string; trackingToken: string; expiresAt: number }>();
-const productImageCache = new Map<string, { url: string | null; expiresAt: number }>();
 
 function cleanupIdempotencyCache() {
   const now = Date.now();
   for (const [key, value] of idempotencyCache.entries()) {
     if (value.expiresAt <= now) idempotencyCache.delete(key);
-  }
-}
-
-function cleanupProductImageCache() {
-  const now = Date.now();
-  for (const [key, value] of productImageCache.entries()) {
-    if (value.expiresAt <= now) productImageCache.delete(key);
-  }
-}
-
-async function fetchPexelsImage(productName: string) {
-  const key = productName.trim().toLowerCase();
-  if (!key) return null;
-
-  const cached = productImageCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.url;
-  }
-
-  if (!PEXELS_API_KEY) {
-    return null;
-  }
-
-  try {
-    const query = encodeURIComponent(`${productName} food`);
-    const response = await fetch(`https://api.pexels.com/v1/search?query=${query}&per_page=1`, {
-      headers: {
-        Authorization: PEXELS_API_KEY,
-      },
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json() as {
-      photos?: Array<{ src?: { medium?: string } }>;
-    };
-
-    const imageUrl = data.photos?.[0]?.src?.medium || null;
-    productImageCache.set(key, {
-      url: imageUrl,
-      expiresAt: Date.now() + PEXELS_CACHE_TTL_MS,
-    });
-    return imageUrl;
-  } catch {
-    return null;
   }
 }
 
@@ -125,7 +76,6 @@ async function getOrderTotalAmount(orderId: string) {
 
 router.get('/bootstrap', async (req: Request, res: Response) => {
   try {
-    cleanupProductImageCache();
     const tableId = req.query.tableId as string | undefined;
     const session = await getActiveSession();
 
@@ -175,16 +125,7 @@ router.get('/bootstrap', async (req: Request, res: Response) => {
       ? tables.find((t: any) => t.id === tableId) || null
       : null;
 
-    const enrichedProducts = await Promise.all(
-      products.map(async (product: any) => {
-        if (product.imageUrl) return product;
-        const fallbackImage = await fetchPexelsImage(product.name);
-        return {
-          ...product,
-          imageUrl: fallbackImage,
-        };
-      })
-    );
+    const enrichedProducts = await withFallbackProductImages(products as any);
 
     res.json({
       session,

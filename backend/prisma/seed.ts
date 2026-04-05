@@ -1,3 +1,8 @@
+/**
+ * Legacy TypeScript seed — not wired in package.json (`prisma db seed` uses seed.mjs).
+ * For the full catalog including extra products, use seed.mjs + product-catalog-extra.mjs,
+ * or run `npm run db:seed-products` on an existing database.
+ */
 import { PrismaClient, Role, UserStatus, TableShape } from './generated/prisma/client.js';
 import bcrypt from 'bcryptjs';
 

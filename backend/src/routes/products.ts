@@ -3,6 +3,7 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
+import { withFallbackProductImages } from '../services/product-image.service.js';
 import '../types/index.js';
 
 const categoriesRouter = Router();
@@ -72,7 +73,7 @@ categoriesRouter.delete('/:id', authenticate, authorize('ADMIN'), async (req: Re
 // GET /api/products
 productsRouter.get('/', authenticate, async (req: Request, res: Response) => {
   try {
-    const { categoryId, active, search, page = '1', limit = '15' } = req.query;
+    const { categoryId, active, search, page = '1', limit = '15', withFallbackImages } = req.query;
     const where: any = {};
     if (categoryId) where.categoryId = categoryId;
     if (active === 'true') where.isActive = true;
@@ -87,6 +88,7 @@ productsRouter.get('/', authenticate, async (req: Request, res: Response) => {
     const pageNum = parseInt(page as string, 10) || 1;
     const limitNum = parseInt(limit as string, 10) || 15;
     const skip = (pageNum - 1) * limitNum;
+    const includeFallbackImages = withFallbackImages === 'true' || withFallbackImages === '1';
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({
@@ -103,8 +105,12 @@ productsRouter.get('/', authenticate, async (req: Request, res: Response) => {
       prisma.product.count({ where })
     ]);
 
+    const responseProducts = includeFallbackImages
+      ? await withFallbackProductImages(products as any)
+      : products;
+
     res.json({
-      data: products,
+      data: responseProducts,
       pagination: {
         total,
         page: pageNum,

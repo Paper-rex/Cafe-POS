@@ -12,16 +12,42 @@ const router = Router();
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const normalizedPassword = typeof password === 'string' ? password : '';
 
-    if (!email || !password) {
+    if (!normalizedEmail || !normalizedPassword) {
       res.status(400).json({ error: 'Email and password are required' });
       return;
     }
 
-    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+      },
+    });
 
-    if (!user || !user.password) {
+    if (!user) {
+      const totalUsers = await prisma.user.count();
+      if (totalUsers === 0) {
+        res.status(401).json({
+          error:
+            'No users are set up yet. Run `npm run db:seed-users` in backend, then log in with admin@cafepos.local / Admin@123.',
+          code: 'NO_USERS_SEEDED',
+        });
+        return;
+      }
+
       res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+
+    if (!user.password) {
+      res.status(403).json({
+        error: 'Password not set for this account. Use the invite link to set your password.',
+      });
       return;
     }
 
@@ -35,7 +61,7 @@ router.post('/login', async (req: Request, res: Response) => {
       return;
     }
 
-    const validPassword = await bcrypt.compare(password, user.password);
+    const validPassword = await bcrypt.compare(normalizedPassword, user.password);
     if (!validPassword) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
@@ -57,9 +83,25 @@ router.post('/login', async (req: Request, res: Response) => {
         status: user.status,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    const err = error as { code?: string; message?: string };
+    if (err?.code === 'P2022') {
+      res.status(503).json({
+        error:
+          'Database schema mismatch (missing or extra columns). Run `npx prisma migrate deploy` in backend, or align your DB with prisma/schema.prisma.',
+        code: 'DB_SCHEMA_MISMATCH',
+      });
+      return;
+    }
+    const body: { error: string; details?: string; code?: string } = {
+      error: 'Internal server error',
+    };
+    if (process.env.NODE_ENV === 'development' && err?.message) {
+      body.details = err.message;
+      if (err.code) body.code = err.code;
+    }
+    res.status(500).json(body);
   }
 });
 
@@ -206,6 +248,7 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
         role: true,
         status: true,
         createdAt: true,
+        branches: { select: { id: true, name: true } },
       },
     });
 

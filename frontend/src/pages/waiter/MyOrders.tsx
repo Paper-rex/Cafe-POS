@@ -9,7 +9,6 @@ import { CheckCircle, CreditCard, Banknote, QrCode, CheckSquare } from 'lucide-r
 import api from '../../lib/api';
 import { useSSE } from '../../hooks/useSSE';
 import type { Order, OrderItem, Payment } from '../../types';
-import { useSSE } from '../../hooks/useSSE';
 import BillModal from '../../components/shared/BillModal';
 import UpiQrModal from '../../components/shared/UpiQrModal';
 

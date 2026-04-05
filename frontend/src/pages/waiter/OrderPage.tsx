@@ -20,7 +20,6 @@ interface CartItem {
 }
 
 export default function OrderPage() {
-  const pexelsApiKey = import.meta.env.VITE_PEXELS_API_KEY as string | undefined;
   const [searchParams] = useSearchParams();
   const tableId = searchParams.get('tableId') || '';
   const tableNumber = searchParams.get('tableNumber') || '?';
@@ -33,7 +32,6 @@ export default function OrderPage() {
   const [searchDebounce, setSearchDebounce] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [imageMap, setImageMap] = useState<Record<string, string>>({});
 
   const [loading, setLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
@@ -66,6 +64,7 @@ export default function OrderPage() {
       const pRes = await api.get('/products', {
         params: {
           active: true,
+          withFallbackImages: true,
           page,
           limit: 20,
           categoryId: selectedCat || undefined,
@@ -96,41 +95,6 @@ export default function OrderPage() {
   useEffect(() => {
     fetchProducts();
   }, [page, selectedCat, searchDebounce]);
-
-  useEffect(() => {
-    const loadFallbackImages = async () => {
-      if (!pexelsApiKey || products.length === 0) return;
-
-      const missing = products.filter((p) => !p.imageUrl && !imageMap[p.id]);
-      if (missing.length === 0) return;
-
-      const updates: Record<string, string> = {};
-      await Promise.all(
-        missing.map(async (product) => {
-          try {
-            const query = encodeURIComponent(`${product.name} food`);
-            const response = await fetch(`https://api.pexels.com/v1/search?query=${query}&per_page=1`, {
-              headers: { Authorization: pexelsApiKey },
-            });
-            if (!response.ok) return;
-            const data = (await response.json()) as {
-              photos?: Array<{ src?: { medium?: string } }>;
-            };
-            const url = data.photos?.[0]?.src?.medium;
-            if (url) updates[product.id] = url;
-          } catch {
-            // ignore image fallback failures
-          }
-        })
-      );
-
-      if (Object.keys(updates).length > 0) {
-        setImageMap((prev) => ({ ...prev, ...updates }));
-      }
-    };
-
-    loadFallbackImages();
-  }, [products, imageMap, pexelsApiKey]);
 
   const handleCategoryClick = (catId: string | null) => {
     setSelectedCat(catId);
@@ -232,7 +196,7 @@ export default function OrderPage() {
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 overflow-y-auto">
             {products.map((product) => {
               const inCart = cart.find((i) => i.productId === product.id);
-              const productImage = product.imageUrl || imageMap[product.id] || null;
+              const productImage = product.imageUrl || null;
               return (
                 <motion.div key={product.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <Card className="p-4 cursor-pointer relative" hover onClick={() => addToCart(product)}>

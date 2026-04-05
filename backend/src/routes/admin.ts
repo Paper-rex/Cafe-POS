@@ -75,6 +75,21 @@ router.post('/staff', async (req: Request, res: Response) => {
       ? branchIds.map((id: string) => ({ id }))
       : [];
 
+    let primaryBranchId: string | null = connectBranches[0]?.id ?? null;
+    if (!primaryBranchId) {
+      const first = await prisma.branch.findFirst({ orderBy: { createdAt: 'asc' } });
+      primaryBranchId = first?.id ?? null;
+    }
+    if (!primaryBranchId) {
+      res.status(400).json({ error: 'Create at least one branch before inviting staff' });
+      return;
+    }
+
+    const branchConnect =
+      connectBranches.length > 0
+        ? { connect: connectBranches }
+        : { connect: [{ id: primaryBranchId }] };
+
     const user = await prisma.user.create({
       data: {
         email: email.toLowerCase(),
@@ -82,7 +97,7 @@ router.post('/staff', async (req: Request, res: Response) => {
         role: role as any,
         status: 'PENDING',
         verifyToken: token,
-        branches: connectBranches.length ? { connect: connectBranches } : undefined,
+        branches: branchConnect,
       },
       select: {
         id: true,
