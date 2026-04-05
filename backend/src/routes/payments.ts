@@ -31,15 +31,8 @@ router.get('/pending', authorize('CASHIER', 'ADMIN'), async (req, res) => {
       branchFilter = { order: { branchId: { in: req.user!.branchIds } } };
     }
 
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const payments = await prisma.payment.findMany({
-      where: {
-        ...branchFilter,
-        OR: [
-          { status: 'PENDING' },
-          { status: 'PAID', createdAt: { gte: twentyFourHoursAgo } }
-        ]
-      },
+      where: { status: 'PENDING', ...branchFilter },
       include: { 
         order: { include: { items: true, table: { select: { number: true } }, waiter: { select: { name: true } } } },
         confirmedBy: { select: { name: true } }

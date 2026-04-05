@@ -3,11 +3,22 @@ import { motion } from 'framer-motion';
 import { Coffee, Clock, History, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import BranchSelector from '../shared/BranchSelector';
+import { useSSE } from '../../hooks/useSSE';
+import { useToastStore } from '../../store/useToastStore';
 
 export default function CashierLayout() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const addToast = useToastStore((s) => s.addToast);
+
+  useSSE({
+    onPaymentConfirmed: (payload) => {
+      if (payload?.source === 'ONLINE_SELF_ORDER') {
+        addToast('success', payload?.message || `Online Payment Received for Order #${payload?.orderNumber || ''}`);
+      }
+    },
+  });
 
   return (
     <div className="min-h-screen bg-surface-1">

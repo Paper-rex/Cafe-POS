@@ -8,6 +8,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useBranchStore } from '../../store/useBranchStore';
 import api from '../../lib/api';
+import { useSSE } from '../../hooks/useSSE';
+import { useToastStore } from '../../store/useToastStore';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -23,6 +25,7 @@ export default function AdminLayout() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const addToast = useToastStore((s) => s.addToast);
 
   const { availableBranches, setAvailableBranches, selectedBranchId, setSelectedBranchId } = useBranchStore();
   const [activeSession, setActiveSession] = useState(false);
@@ -46,6 +49,14 @@ export default function AdminLayout() {
     };
     fetchBranches();
   }, [setAvailableBranches]); // selectedBranchId is intentionally omitted to avoid resetting
+
+  useSSE({
+    onPaymentConfirmed: (payload) => {
+      if (payload?.source === 'ONLINE_SELF_ORDER') {
+        addToast('success', payload?.message || `Online Payment Received for Order #${payload?.orderNumber || ''}`);
+      }
+    },
+  });
 
   useEffect(() => {
     const checkSession = async () => {

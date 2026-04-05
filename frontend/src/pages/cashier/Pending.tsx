@@ -68,7 +68,8 @@ export default function CashierPending() {
                       <div className="flex items-center gap-1">
                         {methodIcon(payment.method)}
                         <Badge variant={payment.method === 'CASH' ? 'success' : payment.method === 'CARD' ? 'info' : 'warning'}>{payment.method}</Badge>
-                        {payment.status === 'PAID' && <Badge variant="success">PAID</Badge>}
+                        <Badge variant={payment.status === 'PAID' ? 'success' : 'warning'}>{payment.status}</Badge>
+                        {payment.method === 'UPI' && <Badge variant="info">ONLINE PAYMENT</Badge>}
                       </div>
                     </div>
                     <div className="text-right"><p className="font-display font-bold text-text-primary">{formatCurrency(payment.amount)}</p></div>

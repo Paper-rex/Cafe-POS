@@ -103,11 +103,24 @@ model PosSession {
   totalSales  Float     @default(0)
 
   // Relations
+  branch      Branch    @relation(fields: [branchId], references: [id])
+  branchId    String
   openedBy    User      @relation("SessionOpenedBy", fields: [openedById], references: [id])
   openedById  String
   branch      Branch    @relation(fields: [branchId], references: [id])
   branchId    String
   orders      Order[]
+}
+
+model Branch {
+  id        String       @id @default(uuid())
+  name      String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  // Relations
+  sessions  PosSession[]
+  orders    Order[]
 }
 
 model Floor {

@@ -88,11 +88,11 @@ router.post('/', authorize('WAITER', 'ADMIN'), sessionRequired, async (req: Requ
       where: { id: { in: productIds } },
       include: { variants: true, toppings: true },
     });
-    const productMap = new Map(products.map(p => [p.id, p]));
+    const productMap = new Map(products.map((p: any) => [p.id, p]));
 
     // Build order items with snapshotted data
     const orderItems = items.map((item: any) => {
-      const product = productMap.get(item.productId);
+      const product = productMap.get(item.productId) as any;
       if (!product) throw Object.assign(new Error(`Product ${item.productId} not found`), { status: 400 });
 
       let unitPrice = product.price;
@@ -209,6 +209,17 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
       order: updated,
     });
 
+    if (newStatus === 'READY') {
+      sseService.broadcast('order:ready_to_serve', {
+        orderId,
+        orderNumber: updated.orderNumber,
+        tableNumber: updated.table?.number,
+        message: `Order #${updated.orderNumber} for Table ${updated.table?.number} is Ready to Serve`,
+      }, {
+        targetRoles: ['KITCHEN', 'WAITER', 'ADMIN', 'CASHIER'],
+      });
+    }
+
     res.json(updated);
   } catch (error) {
     console.error('Update order status error:', error);
@@ -245,26 +256,54 @@ router.patch('/:id/items/status', async (req: Request, res: Response) => {
     const allItems = await prisma.orderItem.findMany({ where: { orderId } });
     let newOrderStatus = undefined;
 
-    const statuses = allItems.map(i => i.itemStatus);
+    const statuses = allItems.map((i: any) => i.itemStatus);
     const hasCooking = statuses.includes('COOKING');
-    const allServed = statuses.length > 0 && statuses.every(s => s === 'SERVED');
-    const allReadyOrServed = statuses.length > 0 && statuses.every(s => s === 'READY' || s === 'SERVED');
+    const allServed = statuses.length > 0 && statuses.every((s: any) => s === 'SERVED');
+    const allReadyOrServed = statuses.length > 0 && statuses.every((s: any) => s === 'READY' || s === 'SERVED');
 
     if (hasCooking) newOrderStatus = 'COOKING';
     else if (allServed) newOrderStatus = 'SERVED';
     else if (allReadyOrServed) newOrderStatus = 'READY';
     else newOrderStatus = 'PENDING'; // Or we could keep the current logic, basically fallback
 
-    let order = await prisma.order.findUnique({ where: { id: orderId } });
+    let order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { table: { select: { number: true } } },
+    });
     if (order && newOrderStatus && order.status !== newOrderStatus && !['PAYMENT_PENDING', 'PAID', 'CANCELLED'].includes(order.status)) {
       order = await prisma.order.update({
         where: { id: orderId },
         data: { status: newOrderStatus as any },
+        include: {
+          table: { select: { number: true } },
+        },
       });
       sseService.broadcast('order:status_updated', {
         orderId,
         status: newOrderStatus,
         order,
+      });
+
+      if (newOrderStatus === 'READY') {
+        sseService.broadcast('order:ready_to_serve', {
+          orderId,
+          orderNumber: order.orderNumber,
+          tableNumber: order.table?.number,
+          message: `Order #${order.orderNumber} for Table ${order.table?.number} is Ready to Serve`,
+        }, {
+          targetRoles: ['WAITER', 'ADMIN', 'CASHIER'],
+        });
+      }
+    }
+
+    if (order && allReadyOrServed && ['PAYMENT_PENDING', 'PAID'].includes(order.status)) {
+      sseService.broadcast('order:ready_to_serve', {
+        orderId,
+        orderNumber: order.orderNumber,
+        tableNumber: order.table?.number,
+        message: `Order #${order.orderNumber} for Table ${order.table?.number} is Ready to Serve`,
+      }, {
+        targetRoles: ['KITCHEN', 'WAITER', 'ADMIN', 'CASHIER'],
       });
     }
 

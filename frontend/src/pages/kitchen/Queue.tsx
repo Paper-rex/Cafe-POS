@@ -51,6 +51,10 @@ export default function KitchenQueue() {
   useEffect(() => { fetchOrders(); }, []);
   useEffect(() => { const i = setInterval(() => setTick(t => t + 1), 1000); return () => clearInterval(i); }, []);
 
+  const activeKitchenOrders = orders.filter(
+    (o) => !['SERVED', 'PAYMENT_PENDING', 'PAID', 'CANCELLED'].includes(o.status)
+  );
+
   const toggleItemSelection = (itemId: string) => {
     setSelectedItems(prev => {
       const next = new Set(prev);
@@ -82,7 +86,7 @@ export default function KitchenQueue() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-140px)]">
         {columns.map((col) => {
           // Find orders that have at least one item in this column's status
-          const colOrders = orders
+          const colOrders = activeKitchenOrders
             .map(o => ({ ...o, items: o.items.filter(i => i.itemStatus === col.status) }))
             .filter(o => o.items.length > 0);
 

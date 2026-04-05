@@ -91,6 +91,9 @@ export default function MyOrders() {
             const allItemsServed = order.items.length > 0 && order.items.every(i => i.itemStatus === 'SERVED');
             const readyItems = order.items.filter(i => i.itemStatus === 'READY');
             const selectedReadyCount = readyItems.filter(i => selectedItems.has(i.id)).length;
+            const paymentStatus = order.payment?.status || 'UNPAID';
+            const paymentMethod = order.payment?.method || null;
+            const isPaid = paymentStatus === 'PAID';
 
             return (
               <Card key={order.id} className="p-5">
@@ -102,6 +105,13 @@ export default function MyOrders() {
                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
                     {order.status}
                   </span>
+                </div>
+
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
+                  <Badge variant={isPaid ? 'success' : paymentStatus === 'PENDING' ? 'warning' : 'neutral'}>
+                    {isPaid ? `${paymentMethod || 'ONLINE'} PAID` : paymentStatus}
+                  </Badge>
+                  {isPaid && paymentMethod === 'UPI' && <Badge variant="info">ONLINE PAYMENT</Badge>}
                 </div>
 
                 {/* Items List */}
@@ -158,7 +168,7 @@ export default function MyOrders() {
                       </Button>
                     )}
                     
-                    {allItemsServed && order.status !== 'PAYMENT_PENDING' && order.status !== 'PAID' && (
+                    {allItemsServed && !isPaid && order.status !== 'PAYMENT_PENDING' && (
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => setActiveBillOrder(order)}>View Bill</Button>
                         <Button size="sm" variant="outline" icon={<Banknote className="w-4 h-4" />} onClick={() => handleInitiatePayment(order.id, 'CASH')}>Cash</Button>
@@ -167,8 +177,12 @@ export default function MyOrders() {
                       </div>
                     )}
 
-                    {order.status === 'PAYMENT_PENDING' && (
+                    {!isPaid && order.status === 'PAYMENT_PENDING' && (
                        <Badge variant="warning">Waiting for Payment</Badge>
+                    )}
+
+                    {isPaid && (
+                      <Badge variant="success">Payment Received</Badge>
                     )}
                   </div>
                 </div>

@@ -9,6 +9,12 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'admin@cafepos.local')
   .split(',')
   .map((e) => e.trim());
 const ADMIN_PASSWORD = process.env.ADMIN_DEFAULT_PASSWORD || 'Admin@123';
+const STAFF_PASSWORD = process.env.STAFF_DEFAULT_PASSWORD || 'Staff@123';
+const DEFAULT_STAFF = [
+  { email: 'waiter@cafepos.local', name: 'Waiter', role: Role.WAITER },
+  { email: 'kitchen@cafepos.local', name: 'Kitchen', role: Role.KITCHEN },
+  { email: 'cashier@cafepos.local', name: 'Cashier', role: Role.CASHIER },
+];
 
 async function main() {
   console.log('Seeding database...\n');
@@ -37,6 +43,28 @@ async function main() {
       },
     });
     console.log(`  Admin user: ${user.email}`);
+  }
+
+  const hashedStaffPassword = await bcrypt.hash(STAFF_PASSWORD, 12);
+  for (const staff of DEFAULT_STAFF) {
+    const user = await prisma.user.upsert({
+      where: { email: staff.email },
+      update: {
+        password: hashedStaffPassword,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+        verifyToken: null,
+      },
+      create: {
+        email: staff.email,
+        name: staff.name,
+        role: staff.role,
+        password: hashedStaffPassword,
+        status: UserStatus.ACTIVE,
+        emailVerified: true,
+      },
+    });
+    console.log(`  Staff user: ${user.email} (${user.role})`);
   }
 
   await prisma.paymentConfig.upsert({

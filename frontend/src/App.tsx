@@ -9,6 +9,8 @@ import { PageLoader } from './components/ui/Spinner';
 // Auth pages
 import Login from './pages/auth/Login';
 import SetPassword from './pages/auth/SetPassword';
+import SelfOrder from './pages/public/SelfOrder';
+import DummyPayment from './pages/public/DummyPayment';
 
 // Layouts
 import AdminLayout from './components/layout/AdminLayout';
@@ -65,6 +67,10 @@ function AppRoutes() {
       {/* Public */}
       <Route path="/login" element={isAuthenticated ? <Navigate to={user?.role === 'ADMIN' ? '/admin' : user?.role === 'WAITER' ? '/waiter' : user?.role === 'KITCHEN' ? '/kitchen' : '/cashier'} replace /> : <Login />} />
       <Route path="/set-password" element={<SetPassword />} />
+      <Route path="/self-order" element={<SelfOrder />} />
+      <Route path="/self-order/:tableId" element={<SelfOrder />} />
+      <Route path="/self-order/payment/:orderId" element={<DummyPayment />} />
+      <Route path="/self-order/track/:orderId" element={<SelfOrder />} />
 
       {/* Admin */}
       <Route path="/admin" element={<ProtectedRoute roles={['ADMIN']}><AdminLayout /></ProtectedRoute>}>

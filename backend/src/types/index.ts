@@ -11,6 +11,7 @@ export interface ActiveSession {
   id: string;
   openedAt: Date;
   isActive: boolean;
+  branchId: string;
   openedById: string;
   branchId: string;
 }

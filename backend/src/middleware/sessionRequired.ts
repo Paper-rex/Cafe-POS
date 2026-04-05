@@ -33,6 +33,7 @@ export async function sessionRequired(req: Request, res: Response, next: NextFun
       id: activeSession.id,
       openedAt: activeSession.openedAt,
       isActive: activeSession.isActive,
+      branchId: activeSession.branchId,
       openedById: activeSession.openedById,
       branchId: activeSession.branchId,
     };

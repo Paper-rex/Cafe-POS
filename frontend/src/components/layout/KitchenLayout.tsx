@@ -4,13 +4,27 @@ import { Coffee, ChefHat, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useState, useEffect } from 'react';
 import BranchSelector from '../shared/BranchSelector';
+import { useSSE } from '../../hooks/useSSE';
+import { useToastStore } from '../../store/useToastStore';
 
 export default function KitchenLayout() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const addToast = useToastStore((s) => s.addToast);
   const [time, setTime] = useState(new Date());
   useEffect(() => { const i = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(i); }, []);
+
+  useSSE({
+    onPaymentConfirmed: (payload) => {
+      if (payload?.source === 'ONLINE_SELF_ORDER') {
+        addToast('success', payload?.message || `Online Payment Received for Order #${payload?.orderNumber || ''}`);
+      }
+    },
+    onOrderReadyToServe: (payload) => {
+      addToast('info', payload?.message || `Waiter notified: Order #${payload?.orderNumber || ''} is ready to serve`);
+    },
+  });
 
   return (
     <div className="min-h-screen flex bg-surface-1">
