@@ -1,13 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4001/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 type SSEHandler = (data: any) => void;
 
 interface SSEOptions {
   onOrderCreated?: SSEHandler;
   onOrderStatusUpdated?: SSEHandler;
+  onOrderReadyToServe?: SSEHandler;
   onPaymentConfirmed?: SSEHandler;
   onSessionOpened?: SSEHandler;
   onSessionClosing?: SSEHandler;
@@ -55,6 +56,14 @@ export function useSSE(options: SSEOptions) {
 
       es.addEventListener('order:status_updated', (e: MessageEvent) => {
         options.onOrderStatusUpdated?.(JSON.parse(e.data));
+      });
+
+      es.addEventListener('order:ready_to_serve', (e: MessageEvent) => {
+        options.onOrderReadyToServe?.(JSON.parse(e.data));
+      });
+
+      es.addEventListener('order:items_updated', (e: MessageEvent) => {
+        options.onOrderItemUpdated?.(JSON.parse(e.data));
       });
 
       es.addEventListener('order:item_updated', (e: MessageEvent) => {

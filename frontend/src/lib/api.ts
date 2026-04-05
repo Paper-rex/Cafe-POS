@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useBranchStore } from '../store/useBranchStore';
 
 // Use Vite proxy in dev (vite.config.ts routes /api/* → localhost:4000)
 // In production, set VITE_API_URL to the actual API endpoint
@@ -10,11 +11,15 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor — attach access token
+// Request interceptor — attach access token and branch (for sessionRequired on orders)
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('accessToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  const branchId = useBranchStore.getState().selectedBranchId;
+  if (branchId) {
+    config.headers['X-Branch-Id'] = branchId;
   }
   return config;
 });

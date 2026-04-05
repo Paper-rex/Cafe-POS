@@ -1,7 +1,5 @@
-import prismaPkg from '@prisma/client';
+import { PrismaClient, Role, UserStatus, TableShape } from './generated/prisma/client.js';
 import bcrypt from 'bcryptjs';
-
-const { PrismaClient, Role, UserStatus, TableShape } = prismaPkg;
 
 const prisma = new PrismaClient();
 

@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { authenticate } from '../middleware/authenticate.js';
 import { verifyAccessToken } from '../lib/jwt.js';
 import sseService from '../services/sse.service.js';
 import '../types/index.js';

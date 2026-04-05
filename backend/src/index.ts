@@ -19,6 +19,7 @@ import paymentRoutes from './routes/payments.js';
 import reportRoutes from './routes/reports.js';
 import eventRoutes from './routes/events.js';
 import branchRoutes from './routes/branches.js';
+import selfOrderRoutes from './routes/self-order.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -50,6 +51,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/branches', branchRoutes);
+app.use('/api/self-order', selfOrderRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
@@ -63,9 +65,22 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`\n Café POS Backend running on http://localhost:${PORT}`);
   console.log(`   Environment: ${process.env.NODE_ENV || 'development'}\n`);
+});
+
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `\n Port ${PORT} is already in use (another backend or app is listening).\n` +
+        `   Fix: stop that process, or set PORT to a free port in backend/.env\n` +
+        `   Windows: netstat -ano | findstr :${PORT}   then   taskkill /PID <pid> /F\n`
+    );
+  } else {
+    console.error('Server failed to start:', err);
+  }
+  process.exit(1);
 });
 
 export default app;

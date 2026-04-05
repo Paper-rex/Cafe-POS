@@ -97,7 +97,7 @@ class PaymentService {
       method: 'UPI',
     });
 
-    return { payment, upiString };
+    return payment;
   }
 
   async confirmPayment(paymentId: string, userId: string, amountTendered?: number, userRole?: string) {

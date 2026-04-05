@@ -13,7 +13,6 @@ export interface ActiveSession {
   isActive: boolean;
   branchId: string;
   openedById: string;
-  branchId: string;
 }
 
 declare global {

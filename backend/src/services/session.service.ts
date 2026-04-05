@@ -11,13 +11,9 @@ class SessionService {
       throw Object.assign(new Error('A session is already active for this branch'), { status: 409 });
     }
 
-    // DB requires PosSession.branchId; use first available branch.
-    const branch = await prisma.branch.findFirst({
-      select: { id: true },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (!branch) {
-      throw Object.assign(new Error('No branch found. Create a branch before opening session.'), { status: 409 });
+    const branchExists = await prisma.branch.findUnique({ where: { id: branchId }, select: { id: true } });
+    if (!branchExists) {
+      throw Object.assign(new Error('Branch not found'), { status: 404 });
     }
 
     const session = await prisma.posSession.create({
@@ -25,7 +21,6 @@ class SessionService {
         openedById: userId,
         branchId,
         isActive: true,
-        branchId: branch.id,
       },
       include: {
         openedBy: { select: { id: true, name: true, email: true } },

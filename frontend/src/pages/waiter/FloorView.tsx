@@ -13,22 +13,15 @@ const shapeSizes: Record<string, string> = { ROUND: 'w-20 h-20', SQUARE: 'w-20 h
 export default function FloorView() {
   const [floors, setFloors] = useState<Floor[]>([]);
   const [activeFloor, setActiveFloor] = useState(0);
-  const [occupiedTables, setOccupiedTables] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   const fetchData = async () => {
     try {
-      const fRes = await api.get('/floors');
+      const fRes = await api.get<Floor[]>('/floors');
       setFloors(fRes.data);
     } catch (err) {
       console.error('Failed to fetch floors:', err);
-    }
-    try {
-      const oRes = await api.get('/orders?status=CREATED&status=SENT&status=PENDING&status=COOKING&status=READY&status=SERVED&status=PAYMENT_PENDING');
-      setOccupiedTables(new Set(oRes.data.map((o: any) => o.tableId)));
-    } catch (err) {
-      console.error('Failed to fetch orders:', err);
     }
     setLoading(false);
   };
@@ -40,7 +33,9 @@ export default function FloorView() {
   useSSE({
     onOrderCreated: fetchData,
     onOrderStatusUpdated: fetchData,
+    onOrderReadyToServe: fetchData,
     onPaymentConfirmed: fetchData,
+    onOrderItemUpdated: fetchData,
   });
 
   if (loading) return <PageLoader />;
@@ -62,7 +57,7 @@ export default function FloorView() {
         <Card className="relative min-h-[600px] bg-surface-1/50 p-6">
           <div className="absolute inset-6" style={{ backgroundImage: 'radial-gradient(circle, #DDE8E2 1px, transparent 1px)', backgroundSize: '30px 30px' }}>
             {currentFloor.tables.map((table) => {
-              const isOccupied = occupiedTables.has(table.id);
+              const isOccupied = table.isOccupied === true;
               return (
                 <div
                   key={table.id}

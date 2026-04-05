@@ -7,6 +7,7 @@ import { useToastStore } from '../../store/useToastStore';
 import { formatCurrency, formatTime, getStatusColor } from '../../lib/formatters';
 import { CheckCircle, CreditCard, Banknote, QrCode, CheckSquare } from 'lucide-react';
 import api from '../../lib/api';
+import { useSSE } from '../../hooks/useSSE';
 import type { Order, OrderItem, Payment } from '../../types';
 import BillModal from '../../components/shared/BillModal';
 import UpiQrModal from '../../components/shared/UpiQrModal';
@@ -31,6 +32,7 @@ export default function MyOrders() {
   };
   useSSE({
     onOrderStatusUpdated: fetchOrders,
+    onOrderReadyToServe: fetchOrders,
     onPaymentConfirmed: fetchOrders,
     onOrderItemUpdated: fetchOrders,
   });

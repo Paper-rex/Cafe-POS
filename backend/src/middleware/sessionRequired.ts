@@ -35,7 +35,6 @@ export async function sessionRequired(req: Request, res: Response, next: NextFun
       isActive: activeSession.isActive,
       branchId: activeSession.branchId,
       openedById: activeSession.openedById,
-      branchId: activeSession.branchId,
     };
 
     next();

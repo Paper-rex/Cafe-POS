@@ -16,6 +16,7 @@ build/
 *.js.map
 
 # Prisma
+prisma/generated/
 prisma/*.db
 prisma/*.db-journal
 prisma/migrations/

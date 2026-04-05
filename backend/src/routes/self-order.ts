@@ -11,6 +11,11 @@ const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
 const PEXELS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
+function paramOrderId(raw: string | string[] | undefined): string | undefined {
+  if (raw === undefined) return undefined;
+  return Array.isArray(raw) ? raw[0] : raw;
+}
+
 const idempotencyCache = new Map<string, { orderId: string; trackingToken: string; expiresAt: number }>();
 const productImageCache = new Map<string, { url: string | null; expiresAt: number }>();
 
@@ -385,7 +390,12 @@ router.post('/orders', async (req: Request, res: Response) => {
 router.get('/orders/:orderId/status', async (req: Request, res: Response) => {
   try {
     const token = req.query.token as string;
-    const orderId = req.params.orderId;
+    const orderId = paramOrderId(req.params.orderId);
+
+    if (!orderId) {
+      res.status(400).json({ error: 'Order id required' });
+      return;
+    }
 
     if (!token) {
       res.status(401).json({ error: 'Tracking token is required' });
@@ -438,7 +448,12 @@ router.get('/orders/:orderId/status', async (req: Request, res: Response) => {
 router.get('/orders/:orderId/payment-intent', async (req: Request, res: Response) => {
   try {
     const token = req.query.token as string;
-    const orderId = req.params.orderId;
+    const orderId = paramOrderId(req.params.orderId);
+
+    if (!orderId) {
+      res.status(400).json({ error: 'Order id required' });
+      return;
+    }
 
     if (!token) {
       res.status(401).json({ error: 'Tracking token is required' });
@@ -505,7 +520,12 @@ router.get('/orders/:orderId/payment-intent', async (req: Request, res: Response
 
 router.post('/orders/:orderId/pay', async (req: Request, res: Response) => {
   try {
-    const orderId = req.params.orderId;
+    const orderId = paramOrderId(req.params.orderId);
+    if (!orderId) {
+      res.status(400).json({ error: 'Order id required' });
+      return;
+    }
+
     const { token, payerName, upiId } = req.body as {
       token?: string;
       payerName?: string;
@@ -603,7 +623,12 @@ router.post('/orders/:orderId/pay', async (req: Request, res: Response) => {
 
 router.post('/orders/:orderId/payment-failure', async (req: Request, res: Response) => {
   try {
-    const orderId = req.params.orderId;
+    const orderId = paramOrderId(req.params.orderId);
+    if (!orderId) {
+      res.status(400).json({ error: 'Order id required' });
+      return;
+    }
+
     const payment = await prisma.payment.findUnique({ where: { orderId } });
 
     if (!payment) {

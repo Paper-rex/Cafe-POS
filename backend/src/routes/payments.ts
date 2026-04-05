@@ -7,6 +7,15 @@ import paymentService from '../services/payment.service.js';
 import '../types/index.js';
 
 const router = Router();
+
+// Razorpay calls this without our JWT — must be registered before authenticate middleware
+router.post('/webhook/razorpay', async (req, res) => {
+  try {
+    await paymentService.handleRazorpayWebhook(req.body, req.headers['x-razorpay-signature'] as string);
+    res.json({ status: 'ok' });
+  } catch (e) { res.status(500).json({ error: 'Webhook failed' }); }
+});
+
 router.use(authenticate);
 
 router.post('/', authorize('WAITER', 'ADMIN'), async (req: Request, res: Response) => {
@@ -48,13 +57,6 @@ router.patch('/:id/confirm', authorize('CASHIER', 'ADMIN'), async (req: Request,
     const result = await paymentService.confirmPayment(req.params.id as string, req.user!.userId, req.body.amountTendered, req.user!.role);
     res.json(result);
   } catch (e: any) { res.status(e.status || 500).json({ error: e.message }); }
-});
-
-router.post('/webhook/razorpay', async (req, res) => {
-  try {
-    await paymentService.handleRazorpayWebhook(req.body, req.headers['x-razorpay-signature'] as string);
-    res.json({ status: 'ok' });
-  } catch (e) { res.status(500).json({ error: 'Webhook failed' }); }
 });
 
 router.get('/history', authorize('CASHIER', 'ADMIN'), async (req, res) => {

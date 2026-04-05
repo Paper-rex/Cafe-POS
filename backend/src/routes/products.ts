@@ -224,20 +224,4 @@ productsRouter.delete('/:id', authenticate, authorize('ADMIN'), async (req: Requ
   }
 });
 
-productsRouter.get('/api/products/page=${page}&limit=${limit}', async (req: Request, res: Response) => {
-  const page = 1
-  const limit = 10
-  const nextstart = (page - 1) * limit
-
-  const [products] = await prisma.product.findMany({
-    skip: nextstart,
-    take: limit,
-    where: { isActive: true },
-    include: { category: true },
-    orderBy: { createdAt: 'asc' }
-  })
-  res.json(products)
-})
-
-
 export default { categories: categoriesRouter, products: productsRouter };

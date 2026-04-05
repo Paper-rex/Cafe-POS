@@ -33,7 +33,31 @@ router.get('/', async (req: Request, res: Response) => {
       },
       orderBy: { createdAt: 'asc' },
     });
-    res.json(floors);
+
+    // Table is "occupied" only while it has a non-terminal order (not PAID / CANCELLED)
+    const tableIds = floors.flatMap((f) => f.tables.map((t) => t.id));
+    const occupiedTableIds = new Set<string>();
+    if (tableIds.length > 0) {
+      const active = await prisma.order.findMany({
+        where: {
+          tableId: { in: tableIds },
+          status: { notIn: ['PAID', 'CANCELLED'] },
+        },
+        select: { tableId: true },
+        distinct: ['tableId'],
+      });
+      for (const row of active) occupiedTableIds.add(row.tableId);
+    }
+
+    const payload = floors.map((floor) => ({
+      ...floor,
+      tables: floor.tables.map((table) => ({
+        ...table,
+        isOccupied: occupiedTableIds.has(table.id),
+      })),
+    }));
+
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }

@@ -42,6 +42,8 @@ export interface Table {
   posY: number;
   isActive: boolean;
   floorId: string;
+  /** From GET /floors: true when the table has an open order (not PAID/CANCELLED) */
+  isOccupied?: boolean;
 }
 
 export interface Category {
