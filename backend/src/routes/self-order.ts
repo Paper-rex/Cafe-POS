@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
 import sseService from '../services/sse.service.js';
 import { withFallbackProductImages } from '../services/product-image.service.js';
+import { withUniqueOrderNumber } from '../lib/order-number.js';
 
 const router = Router();
 
@@ -248,9 +249,6 @@ router.post('/orders', async (req: Request, res: Response) => {
       };
     });
 
-    const orderCount = await prisma.order.count({ where: { sessionId: activeSession.id } });
-    const orderNumber = `ORD-${String(orderCount + 1).padStart(4, '0')}`;
-
     const customerMeta = {
       source: 'SELF_ORDER',
       customerName: name,
@@ -260,22 +258,24 @@ router.post('/orders', async (req: Request, res: Response) => {
       createdAt: new Date().toISOString(),
     };
 
-    const created = await prisma.order.create({
-      data: {
-        orderNumber,
-        status: 'SENT',
-        tableId,
-        waiterId,
-        sessionId: activeSession.id,
-        branchId: activeSession.branchId,
-        notes: JSON.stringify(customerMeta),
-        items: { create: orderItems },
-      },
-      include: {
-        items: true,
-        table: { select: { id: true, number: true } },
-      },
-    });
+    const created = await withUniqueOrderNumber((orderNumber) =>
+      prisma.order.create({
+        data: {
+          orderNumber,
+          status: 'SENT',
+          tableId,
+          waiterId,
+          sessionId: activeSession.id,
+          branchId: activeSession.branchId,
+          notes: JSON.stringify(customerMeta),
+          items: { create: orderItems },
+        },
+        include: {
+          items: true,
+          table: { select: { id: true, number: true } },
+        },
+      })
+    );
 
     const orderTotal = created.items.reduce((sum: number, i: any) => sum + i.subtotal, 0);
 

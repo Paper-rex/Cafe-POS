@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { PageLoader } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
@@ -23,7 +22,7 @@ interface ReportData {
 export default function Reports() {
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
@@ -51,298 +50,186 @@ export default function Reports() {
     }
   };
 
-  useEffect(() => {
-    fetchReport();
-  }, [selectedMonth, selectedYear, reportBranchId]);
+  useEffect(() => { fetchReport(); }, [selectedMonth, selectedYear, reportBranchId]);
 
-  // Derived Data for Charts
   const dailyRevenueData = useMemo(() => {
     if (!data) return [];
     const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
     const map = new Map<number, number>();
-    
     data.orders.forEach(o => {
       const day = new Date(o.createdAt).getDate();
       const rev = o.payment?.amount || 0;
       map.set(day, (map.get(day) || 0) + rev);
     });
-
-    return Array.from({ length: daysInMonth }, (_, i) => ({
-      date: i + 1,
-      revenue: map.get(i + 1) || 0,
-    }));
+    return Array.from({ length: daysInMonth }, (_, i) => ({ date: i + 1, revenue: map.get(i + 1) || 0 }));
   }, [data, selectedYear, selectedMonth]);
 
   const topProductsChartData = useMemo(() => {
     if (!data) return [];
-    return data.topProducts.map(p => ({
-      name: p.name,
-      quantity: p._sum.quantity,
-      revenue: p._sum.subtotal
-    })).sort((a, b) => b.quantity - a.quantity);
+    return data.topProducts.map(p => ({ name: p.name, quantity: p._sum.quantity, revenue: p._sum.subtotal })).sort((a, b) => b.quantity - a.quantity);
   }, [data]);
 
-  // Exporters
   const exportCSV = () => {
     if (!data || !data.orders.length) return addToast('error', 'No data to export');
-    
     const headers = ['Order ID,Date,Table,Status,Payment Method,Total\n'];
-    const csvContent = data.orders.map(o => {
-      const row = [
-        o.id,
-        new Date(o.createdAt).toLocaleString().replace(/,/g, ''),
-        o.table?.number ? `T${o.table.number}` : 'Takeaway',
-        o.status,
-        o.payment?.method || 'N/A',
-        (o.payment?.amount || 0).toFixed(2)
-      ];
-      return row.join(',');
-    });
-
+    const csvContent = data.orders.map(o => [o.id, new Date(o.createdAt).toLocaleString().replace(/,/g, ''), o.table?.number ? `T${o.table.number}` : 'Takeaway', o.status, o.payment?.method || 'N/A', (o.payment?.amount || 0).toFixed(2)].join(','));
     const blob = new Blob([headers + csvContent.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `Report_${selectedYear}_${selectedMonth}.csv`;
-    a.click();
+    a.href = url; a.download = `Report_${selectedYear}_${selectedMonth}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
   const exportPDF = () => {
     if (!data || !data.orders.length) return addToast('error', 'No data to export');
-    
     const doc = new jsPDF();
-    
-    // Header
-    doc.setFontSize(22);
-    doc.text('Cafe POS - Monthly Report', 14, 20);
-    
+    doc.setFontSize(22); doc.text('Indus POS - Monthly Report', 14, 20);
     doc.setFontSize(11);
     doc.text(`Period: ${selectedMonth}/${selectedYear}`, 14, 30);
     doc.text(`Total Revenue: ₹${data.totalRevenue.toFixed(2)}`, 14, 36);
     doc.text(`Total Orders: ${data.totalOrders}`, 14, 42);
-
-    const tableColumn = ["Order ID", "Date", "Table", "Status", "Total", "Method"];
-    const tableRows = data.orders.map(o => [
-      o.id.slice(-6).toUpperCase(),
-      new Date(o.createdAt).toLocaleDateString(),
-      o.table?.number ? `T${o.table.number}` : 'Takeaway',
-      o.status,
-      `₹${(o.payment?.amount || 0).toFixed(2)}`,
-      o.payment?.method || 'N/A'
-    ]);
-
-    autoTable(doc, {
-      startY: 50,
-      head: [tableColumn],
-      body: tableRows,
-      theme: 'grid',
-      headStyles: { fillColor: [50, 213, 131] } // Brand main color
-    });
-
+    const tableColumn = ['Order ID', 'Date', 'Table', 'Status', 'Total', 'Method'];
+    const tableRows = data.orders.map(o => [o.id.slice(-6).toUpperCase(), new Date(o.createdAt).toLocaleDateString(), o.table?.number ? `T${o.table.number}` : 'Takeaway', o.status, `₹${(o.payment?.amount || 0).toFixed(2)}`, o.payment?.method || 'N/A']);
+    autoTable(doc, { startY: 50, head: [tableColumn], body: tableRows, theme: 'grid', headStyles: { fillColor: [255, 45, 120] } });
     doc.save(`Report_${selectedYear}_${selectedMonth}.pdf`);
   };
 
+  const selectClass = "bg-surface-2 border border-edge rounded text-xs font-bold text-ink-primary px-3 py-2 focus:border-neon-pink outline-none cursor-pointer";
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold text-text-primary">Reports</h1>
-          <p className="text-text-secondary mt-1">Analytics and financial exports</p>
+          <p className="text-[10px] font-black tracking-[0.2em] uppercase text-neon-pink mb-1">Admin Console</p>
+          <h1 className="text-3xl font-black tracking-[-0.03em] text-white uppercase">Reports</h1>
+          <p className="text-xs text-ink-muted mt-1 font-medium">Analytics and financial exports</p>
         </div>
-        
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 bg-white border border-border p-1.5 rounded-xl text-text-primary">
-            <Calendar className="w-4 h-4 text-text-muted ml-2 shrink-0" />
-            <select 
-              value={selectedMonth} 
-              onChange={e => setSelectedMonth(Number(e.target.value))}
-              className="bg-transparent text-sm font-medium pr-2 focus:outline-none cursor-pointer text-text-primary"
-            >
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 bg-surface-2 border border-edge rounded px-3 py-2">
+            <Calendar className="w-3.5 h-3.5 text-neon-pink shrink-0" />
+            <select value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))} className="bg-transparent text-xs font-bold text-ink-primary focus:outline-none cursor-pointer">
               {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                 <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('default', { month: 'short' })}</option>
               ))}
             </select>
-            <span className="text-border">|</span>
-            <select 
-              value={selectedYear} 
-              onChange={e => setSelectedYear(Number(e.target.value))}
-              className="bg-transparent text-sm font-medium pr-2 focus:outline-none cursor-pointer text-text-primary"
-            >
+            <span className="text-edge">|</span>
+            <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} className="bg-transparent text-xs font-bold text-ink-primary focus:outline-none cursor-pointer">
               {[currentDate.getFullYear() - 1, currentDate.getFullYear(), currentDate.getFullYear() + 1].map(y => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
           </div>
 
-          <div className="flex items-center gap-2 bg-white border border-border p-1.5 rounded-xl text-text-primary">
-            <Filter className="w-4 h-4 text-text-muted ml-2 shrink-0" />
-            <select 
-              value={reportBranchId} 
-              onChange={e => setReportBranchId(e.target.value)}
-              className="bg-transparent text-sm font-medium pr-2 focus:outline-none cursor-pointer text-text-primary"
-            >
-              <option value="ALL">All Branches (Merged)</option>
-              {availableBranches.map(b => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
+          <div className="flex items-center gap-2 bg-surface-2 border border-edge rounded px-3 py-2">
+            <Filter className="w-3.5 h-3.5 text-neon-yellow shrink-0" />
+            <select value={reportBranchId} onChange={e => setReportBranchId(e.target.value)} className="bg-transparent text-xs font-bold text-ink-primary focus:outline-none cursor-pointer">
+              <option value="ALL">All Branches</option>
+              {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
-          
-          <Button variant="outline" onClick={exportCSV} icon={<FileSpreadsheet className="w-4 h-4" />}>
-            CSV
-          </Button>
-          <Button onClick={exportPDF} icon={<FileText className="w-4 h-4" />}>
-            PDF
-          </Button>
+
+          <Button variant="outline" onClick={exportCSV} icon={<FileSpreadsheet className="w-3.5 h-3.5" />} size="sm">CSV</Button>
+          <Button onClick={exportPDF} icon={<FileText className="w-3.5 h-3.5" />} size="sm">PDF</Button>
         </div>
       </div>
 
-      {loading ? (
-        <PageLoader />
-      ) : data ? (
+      {loading ? <PageLoader /> : data ? (
         <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="p-6">
-              <p className="text-sm font-medium text-text-secondary mb-1">Total Revenue</p>
-              <h3 className="text-3xl font-display font-bold text-brand-main">
-                <span className="text-2xl text-text-muted mr-1">₹</span>
-                {data.totalRevenue.toFixed(2)}
-              </h3>
-            </Card>
-            <Card className="p-6">
-              <p className="text-sm font-medium text-text-secondary mb-1">Total Orders</p>
-              <h3 className="text-3xl font-display font-bold text-text-primary">
-                {data.totalOrders}
-              </h3>
-            </Card>
-            <Card className="p-6">
-              <p className="text-sm font-medium text-text-secondary mb-1">Avg Order Value</p>
-              <h3 className="text-3xl font-display font-bold text-text-primary">
-                <span className="text-2xl text-text-muted mr-1">₹</span>
-                {data.totalOrders > 0 ? (data.totalRevenue / data.totalOrders).toFixed(2) : '0.00'}
-              </h3>
-            </Card>
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { label: 'Total Revenue', value: `₹${data.totalRevenue.toFixed(2)}`, color: '#FF2D78' },
+              { label: 'Total Orders', value: String(data.totalOrders), color: '#00FFB3' },
+              { label: 'Avg Order Value', value: `₹${data.totalOrders > 0 ? (data.totalRevenue / data.totalOrders).toFixed(2) : '0.00'}`, color: '#FFE600' },
+            ].map((stat) => (
+              <div key={stat.label} className="bg-surface-2 border border-edge rounded p-5" style={{ boxShadow: `4px 4px 0px ${stat.color}` }}>
+                <p className="text-[10px] font-black tracking-[0.12em] uppercase text-ink-muted mb-2">{stat.label}</p>
+                <p className="text-2xl font-black" style={{ color: stat.color }}>{stat.value}</p>
+              </div>
+            ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Daily Revenue Chart */}
-            <Card className="p-6 col-span-1 lg:col-span-2">
-              <h3 className="text-lg font-bold text-text-primary mb-6">Daily Revenue</h3>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailyRevenueData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                    <XAxis 
-                      dataKey="date" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: '#6B7280', fontSize: 12 }} 
-                      dy={10} 
-                    />
-                    <YAxis 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: '#6B7280', fontSize: 12 }} 
-                      tickFormatter={(value) => `₹${value}`}
-                      dx={-10}
-                    />
-                    <Tooltip 
-                      cursor={{ fill: '#F3F4F6' }}
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      formatter={(value: number) => [`₹${value.toFixed(2)}`, 'Revenue']}
-                      labelFormatter={(label) => `Date: ${selectedMonth}/${label}/${selectedYear}`}
-                    />
-                    <Bar dataKey="revenue" fill="#32D583" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
+          {/* Daily Revenue Bar Chart */}
+          <div className="bg-surface-2 border border-edge rounded p-6" style={{ boxShadow: '4px 4px 0px #FF2D78' }}>
+            <h3 className="text-xs font-black tracking-[0.08em] uppercase text-white mb-5">Daily Revenue</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dailyRevenueData}>
+                  <CartesianGrid strokeDasharray="2 4" stroke="#1A1A1A" vertical={false} />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#505050', fontSize: 10, fontFamily: 'Space Grotesk', fontWeight: 700 }} dy={6} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#505050', fontSize: 10, fontFamily: 'Space Grotesk', fontWeight: 700 }} tickFormatter={(v) => `₹${v}`} dx={-4} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(255,45,120,0.06)' }}
+                    contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '4px', fontSize: '12px', fontFamily: 'Space Grotesk', color: '#FFFFFF' }}
+                    formatter={(v: number) => [`₹${v.toFixed(2)}`, 'Revenue']}
+                    labelFormatter={(label) => `Day ${label}/${selectedMonth}`}
+                  />
+                  <Bar dataKey="revenue" fill="#FF2D78" radius={[2, 2, 0, 0]} maxBarSize={32} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {/* Top Products */}
-            <Card className="p-6">
-              <h3 className="text-lg font-bold text-text-primary mb-4">Top Products (Qty)</h3>
-              <div className="space-y-4">
+            <div className="bg-surface-2 border border-edge rounded p-5" style={{ boxShadow: '4px 4px 0px #FFE600' }}>
+              <h3 className="text-xs font-black tracking-[0.08em] uppercase text-white mb-5">Top Products</h3>
+              <div className="space-y-3">
                 {topProductsChartData.slice(0, 5).map((p, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-brand-pale text-brand-main flex items-center justify-center text-xs font-bold">
-                        {i + 1}
-                      </div>
-                      <span className="font-medium text-text-primary">{p.name}</span>
-                    </div>
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-black text-white" style={{ backgroundColor: '#FF2D78' }}>{i + 1}</span>
+                    <span className="flex-1 text-xs font-semibold text-ink-primary truncate">{p.name}</span>
                     <div className="text-right">
-                      <div className="font-semibold text-text-primary">{p.quantity}x</div>
-                      <div className="text-xs text-text-muted">₹{p.revenue.toFixed(2)}</div>
+                      <div className="text-xs font-black text-neon-yellow">{p.quantity}×</div>
+                      <div className="text-[10px] text-ink-muted">₹{p.revenue?.toFixed(2) || '0.00'}</div>
                     </div>
                   </div>
                 ))}
-                {topProductsChartData.length === 0 && (
-                  <p className="text-text-muted text-center py-4">No products sold in this period.</p>
-                )}
+                {topProductsChartData.length === 0 && <p className="text-ink-muted text-xs text-center py-4">No products sold this period.</p>}
               </div>
-            </Card>
+            </div>
 
-            {/* Recent Orders Overview */}
-            <Card className="p-0 overflow-hidden col-span-1 lg:col-span-2 text-text-primary">
-              <div className="p-6 border-b border-border flex justify-between items-center">
-                <h3 className="text-lg font-bold text-text-primary">Order History</h3>
+            {/* Order History Table */}
+            <div className="bg-surface-2 border border-edge rounded overflow-hidden" style={{ boxShadow: '4px 4px 0px #00FFB3' }}>
+              <div className="px-5 py-4 border-b border-edge">
+                <h3 className="text-xs font-black tracking-[0.08em] uppercase text-white">Order History</h3>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[700px]">
-                  <thead>
-                    <tr className="bg-surface-2/50 text-text-secondary text-sm border-b border-border">
-                      <th className="font-medium py-3 px-6">Order ID</th>
-                      <th className="font-medium py-3 px-6">Date</th>
-                      <th className="font-medium py-3 px-6">Table</th>
-                      <th className="font-medium py-3 px-6">Status</th>
-                      <th className="font-medium py-3 px-6">Payment</th>
-                      <th className="font-medium py-3 px-6 text-right">Total</th>
+              <div className="overflow-x-auto max-h-72 overflow-y-auto">
+                <table className="w-full min-w-[500px]">
+                  <thead className="sticky top-0">
+                    <tr className="bg-surface-1 border-b border-edge">
+                      {['Order', 'Date', 'Table', 'Status', 'Total'].map(h => (
+                        <th key={h} className="px-4 py-2.5 text-left text-[10px] font-black tracking-[0.1em] uppercase text-ink-muted">{h}</th>
+                      ))}
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-edge">
                     {data.orders.map((order) => (
-                      <tr key={order.id} className="border-b border-border/50 hover:bg-surface-1 transition-colors">
-                        <td className="py-4 px-6 text-sm font-medium text-text-primary">
-                          #{order.id.slice(-6).toUpperCase()}
-                        </td>
-                        <td className="py-4 px-6 text-sm text-text-secondary">
-                          {new Date(order.createdAt).toLocaleDateString()} {new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        </td>
-                        <td className="py-4 px-6 text-sm text-text-secondary">
-                          {order.table?.number ? `T${order.table.number}` : 'Takeaway'}
-                        </td>
-                        <td className="py-4 px-6">
-                          <Badge variant={order.status === 'PAID' ? 'success' : order.status === 'CANCELLED' ? 'danger' : 'warning'}>
+                      <tr key={order.id} className="hover:bg-[rgba(255,45,120,0.04)] transition-colors">
+                        <td className="px-4 py-2.5 text-[11px] font-mono font-bold text-ink-primary">#{order.id.slice(-6).toUpperCase()}</td>
+                        <td className="px-4 py-2.5 text-[10px] text-ink-muted">{new Date(order.createdAt).toLocaleDateString()}</td>
+                        <td className="px-4 py-2.5 text-[11px] text-ink-secondary">{order.table?.number ? `T${order.table.number}` : 'Take'}</td>
+                        <td className="px-4 py-2.5">
+                          <Badge variant={order.status === 'PAID' ? 'success' : order.status === 'CANCELLED' ? 'danger' : 'warning'} dot>
                             {order.status}
                           </Badge>
                         </td>
-                        <td className="py-4 px-6 text-sm text-text-secondary">
-                           {order.payment?.method ? (
-                             <span className="capitalize">{order.payment.method.toLowerCase()}</span>
-                           ) : '-'}
-                        </td>
-                        <td className="py-4 px-6 text-sm font-semibold text-text-primary text-right">
-                          ₹{(order.payment?.amount || 0).toFixed(2)}
-                        </td>
+                        <td className="px-4 py-2.5 text-[11px] font-black text-neon-mint">₹{(order.payment?.amount || 0).toFixed(2)}</td>
                       </tr>
                     ))}
                     {data.orders.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="py-12 text-center text-text-muted">
-                          No orders found for this period.
-                        </td>
-                      </tr>
+                      <tr><td colSpan={5} className="py-10 text-center text-xs text-ink-muted">No orders found for this period.</td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
-            </Card>
+            </div>
           </div>
         </>
       ) : (
-        <div className="py-20 text-center text-text-muted">No data available</div>
+        <div className="py-20 text-center text-xs text-ink-muted font-medium">No report data available</div>
       )}
     </div>
   );

@@ -36,24 +36,25 @@ router.get('/', async (req: Request, res: Response) => {
 
     // Table is "occupied" only while it has a non-terminal order (not PAID / CANCELLED)
     const tableIds = floors.flatMap((f) => f.tables.map((t) => t.id));
-    const occupiedTableIds = new Set<string>();
+    const tableOrderMap = new Map<string, string>(); // tableId -> orderId
+
     if (tableIds.length > 0) {
       const active = await prisma.order.findMany({
         where: {
           tableId: { in: tableIds },
           status: { notIn: ['PAID', 'CANCELLED'] },
         },
-        select: { tableId: true },
-        distinct: ['tableId'],
+        select: { id: true, tableId: true },
       });
-      for (const row of active) occupiedTableIds.add(row.tableId);
+      for (const row of active) tableOrderMap.set(row.tableId, row.id);
     }
 
     const payload = floors.map((floor) => ({
       ...floor,
       tables: floor.tables.map((table) => ({
         ...table,
-        isOccupied: occupiedTableIds.has(table.id),
+        isOccupied: tableOrderMap.has(table.id),
+        activeOrderId: tableOrderMap.get(table.id) || null,
       })),
     }));
 

@@ -19,7 +19,9 @@ const prisma = new PrismaClient();
 const SEED_TAG = 'HISTORY_SEED_V1';
 const TARGET_ORDERS = Math.max(1, Number.parseInt(process.env.HISTORY_ORDER_COUNT || '30', 10) || 30);
 const MAX_DAYS_BACK = Math.max(7, Number.parseInt(process.env.HISTORY_DAYS_BACK || '21', 10) || 21);
-const TARGET_BRANCH_INDEX = Math.max(1, Number.parseInt(process.env.HISTORY_BRANCH_INDEX || '1', 10) || 1);
+const RAW_TARGET_BRANCH_INDEX = (process.env.HISTORY_BRANCH_INDEX || '').trim();
+const HAS_EXPLICIT_BRANCH_INDEX = RAW_TARGET_BRANCH_INDEX.length > 0;
+const TARGET_BRANCH_INDEX = Math.max(1, Number.parseInt(RAW_TARGET_BRANCH_INDEX || '1', 10) || 1);
 const TARGET_BRANCH_ID = (process.env.HISTORY_BRANCH_ID || '').trim();
 const TARGET_BRANCH_NAME = (process.env.HISTORY_BRANCH_NAME || '').trim().toLowerCase();
 
@@ -107,7 +109,19 @@ async function getNextOrderNumberStart() {
 async function resolveTargetBranch() {
   const branches = await prisma.branch.findMany({
     orderBy: { createdAt: 'asc' },
-    select: { id: true, name: true },
+    select: {
+      id: true,
+      name: true,
+      createdAt: true,
+      floors: {
+        select: {
+          tables: {
+            where: { isActive: true },
+            select: { id: true },
+          },
+        },
+      },
+    },
   });
 
   if (branches.length === 0) return null;
@@ -125,11 +139,22 @@ async function resolveTargetBranch() {
     if (!byName) {
       throw new Error(`Branch with HISTORY_BRANCH_NAME=${TARGET_BRANCH_NAME} not found.`);
     }
-    return byName;
+    return { id: byName.id, name: byName.name };
+  }
+
+  if (!HAS_EXPLICIT_BRANCH_INDEX) {
+    // Default behavior: pick the most recently created branch that has active tables.
+    const newestBranchWithTables = [...branches]
+      .reverse()
+      .find((branch) => branch.floors.some((floor) => floor.tables.length > 0));
+
+    if (newestBranchWithTables) {
+      return { id: newestBranchWithTables.id, name: newestBranchWithTables.name };
+    }
   }
 
   const idx = Math.min(TARGET_BRANCH_INDEX, branches.length) - 1;
-  return branches[idx];
+  return { id: branches[idx].id, name: branches[idx].name };
 }
 
 async function getOrCreateSessionForDate({ date, branchId, openedById, cache, todayActiveSession }) {

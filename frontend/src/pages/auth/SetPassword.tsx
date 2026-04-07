@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Coffee, Lock, Shield } from 'lucide-react';
+import { Lock, Shield, Zap, ArrowRight } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useToastStore } from '../../store/useToastStore';
@@ -18,7 +18,6 @@ export default function SetPassword() {
   const addToast = useToastStore((s) => s.addToast);
   const navigate = useNavigate();
 
-  // Decode role from token for display
   let roleFromToken = '';
   try {
     if (token) {
@@ -39,7 +38,7 @@ export default function SetPassword() {
 
   const strength = getStrength(password);
   const strengthLabels = ['', 'Weak', 'Fair', 'Good', 'Strong', 'Excellent'];
-  const strengthColors = ['', 'bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-brand-light', 'bg-brand-main'];
+  const strengthColors = ['', '#FF3B5C', '#FF6B2B', '#FFE600', '#00FFB3', '#00FFB3'];
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -60,10 +59,14 @@ export default function SetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-1">
-        <div className="text-center">
-          <h2 className="font-display text-2xl font-bold text-text-primary mb-2">Invalid Link</h2>
-          <p className="text-text-secondary mb-4">This invite link is invalid or has expired.</p>
+      <div className="min-h-screen flex items-center justify-center dot-grid" style={{ backgroundColor: '#0A0A0A' }}>
+        <div className="text-center bg-surface-1 border border-edge rounded p-10"
+             style={{ boxShadow: '6px 6px 0px #FF3B5C' }}>
+          <div className="w-12 h-12 bg-[rgba(255,59,92,0.12)] border border-[rgba(255,59,92,0.25)] rounded flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-6 h-6 text-danger" />
+          </div>
+          <h2 className="text-lg font-black uppercase tracking-[-0.01em] text-ink-primary mb-2">Invalid Link</h2>
+          <p className="text-xs text-ink-muted mb-6 leading-relaxed">This invite link is invalid or has expired.</p>
           <Button onClick={() => navigate('/login')}>Go to Login</Button>
         </div>
       </div>
@@ -71,63 +74,158 @@ export default function SetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex">
-      <motion.div initial={{ opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}
-        className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-dark via-brand-mid to-brand-main items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-20 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-32 right-16 w-96 h-96 bg-brand-light/10 rounded-full blur-3xl" />
+    <div className="min-h-screen flex dot-grid" style={{ backgroundColor: '#0A0A0A' }}>
+      {/* Left Panel */}
+      <motion.div
+        initial={{ opacity: 0, x: -40 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5 }}
+        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-14 relative overflow-hidden border-r border-edge"
+        style={{ backgroundColor: '#0D0D0D' }}
+      >
+        {/* Geometric decorations */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-12 right-12 w-32 h-32 border border-[rgba(0,255,179,0.2)]" />
+          <div className="absolute top-16 right-16 w-32 h-32 border border-[rgba(0,255,179,0.1)]" />
+          <div className="absolute bottom-24 left-16 w-40 h-40 border border-[rgba(255,45,120,0.15)]" />
+          <div className="absolute bottom-20 left-12 w-40 h-40 border border-[rgba(255,45,120,0.08)]" />
         </div>
-        <div className="relative z-10 text-center px-12">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.3 }}
-            className="inline-flex items-center justify-center w-24 h-24 bg-white/10 backdrop-blur-sm rounded-3xl mb-8">
-            <Shield className="w-12 h-12 text-white" />
-          </motion.div>
-          <h1 className="font-display text-4xl font-extrabold text-white mb-4">Set Your Password</h1>
-          <p className="text-xl text-brand-pale/80">Create a secure password to access your account.</p>
+
+        {/* Logo */}
+        <div className="relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-neon-pink rounded flex items-center justify-center"
+                 style={{ boxShadow: '3px 3px 0px rgba(255,45,120,0.4)' }}>
+              <Zap className="w-5 h-5 text-white" strokeWidth={2.5} />
+            </div>
+            <div>
+              <p className="text-[11px] font-black tracking-[0.2em] uppercase text-neon-pink">Indus POS</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Hero text */}
+        <div className="relative z-10">
+          <h1 className="text-5xl font-black leading-none tracking-[-0.04em] text-white mb-2">
+            SECURE
+          </h1>
+          <h1 className="text-5xl font-black leading-none tracking-[-0.04em] text-neon-mint mb-5">
+            ACCESS
+          </h1>
+          <p className="text-sm text-ink-secondary leading-relaxed max-w-xs font-medium">
+            Set a strong password to protect your Indus POS account. You only need to do this once.
+          </p>
+        </div>
+
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-surface-2 border border-edge rounded">
+            <Shield className="w-3 h-3 text-neon-mint" />
+            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-ink-secondary">Invite-Only Access</span>
+          </div>
         </div>
       </motion.div>
 
-      <motion.div initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6 }}
-        className="flex-1 flex items-center justify-center px-6 py-12 bg-surface-1">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-brand-main rounded-xl flex items-center justify-center">
-              <Coffee className="w-5 h-5 text-white" />
+      {/* Right Form */}
+      <motion.div
+        initial={{ opacity: 0, x: 40 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5 }}
+        className="flex-1 flex items-center justify-center px-8 py-12"
+      >
+        <div className="w-full max-w-sm">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-center gap-2 mb-10">
+            <div className="w-8 h-8 bg-neon-pink rounded flex items-center justify-center">
+              <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
             </div>
-            <span className="font-display text-xl font-bold text-brand-dark">Café POS</span>
+            <span className="text-sm font-black tracking-[-0.02em] text-white">INDUS POS</span>
           </div>
 
-          <h2 className="font-display text-3xl font-bold text-text-primary mb-2">Create Password</h2>
-          {roleFromToken && (
-            <p className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-pale text-brand-dark text-sm font-medium mb-6">
-              <Shield className="w-3.5 h-3.5" /> Role: {roleFromToken}
-            </p>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5 mt-4">
-            <div>
-              <Input label="Password" type="password" placeholder="At least 6 characters" value={password}
-                onChange={(e) => setPassword(e.target.value)} icon={<Lock className="w-4 h-4" />} required />
-              {password && (
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="flex-1 flex gap-1">{[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className={`h-1 flex-1 rounded-full ${i <= strength ? strengthColors[strength] : 'bg-gray-200'}`} />
-                  ))}</div>
-                  <span className="text-xs text-text-muted">{strengthLabels[strength]}</span>
+          {/* Form card */}
+          <div className="bg-surface-1 border border-edge rounded p-7"
+               style={{ boxShadow: '6px 6px 0px #00FFB3' }}>
+            <div className="mb-6">
+              <h2 className="text-xl font-black tracking-[-0.02em] text-white mb-1">SET PASSWORD</h2>
+              <p className="text-xs text-ink-muted leading-relaxed">Create a secure password for your account.</p>
+              {roleFromToken && (
+                <div className="mt-3 inline-flex items-center gap-2 px-2.5 py-1 bg-[rgba(0,255,179,0.1)] border border-[rgba(0,255,179,0.25)] rounded">
+                  <Shield className="w-3 h-3 text-neon-mint" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.1em] text-neon-mint">Role: {roleFromToken}</span>
                 </div>
               )}
             </div>
-            <Input label="Confirm Password" type="password" placeholder="Re-enter password" value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)} icon={<Lock className="w-4 h-4" />}
-              error={confirmPassword && password !== confirmPassword ? 'Passwords do not match' : undefined} required />
-            {error && (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-danger bg-danger-pale px-4 py-2.5 rounded-xl">
-                {error}
-              </motion.p>
-            )}
-            <Button type="submit" loading={loading} className="w-full" size="lg">Set Password</Button>
-          </form>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Input
+                  label="New Password"
+                  type="password"
+                  placeholder="At least 6 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  icon={<Lock className="w-3.5 h-3.5" />}
+                  required
+                />
+                {password && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 flex gap-1">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div
+                          key={i}
+                          className="h-1 flex-1 rounded-none transition-colors duration-200"
+                          style={{ backgroundColor: i <= strength ? strengthColors[strength] : '#2A2A2A' }}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.08em]"
+                          style={{ color: strengthColors[strength] || '#505050' }}>
+                      {strengthLabels[strength]}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <Input
+                label="Confirm Password"
+                type="password"
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                icon={<Lock className="w-3.5 h-3.5" />}
+                error={confirmPassword && password !== confirmPassword ? 'Passwords do not match' : undefined}
+                required
+              />
+
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-[rgba(255,59,92,0.1)] border border-[rgba(255,59,92,0.25)] rounded"
+                >
+                  <span className="w-1.5 h-1.5 bg-danger rounded-full shrink-0" />
+                  <p className="text-xs text-danger font-medium">{error}</p>
+                </motion.div>
+              )}
+
+              <Button
+                type="submit"
+                loading={loading}
+                className="w-full mt-1"
+                size="lg"
+                variant="mint"
+                icon={!loading ? <ArrowRight className="w-4 h-4" /> : undefined}
+              >
+                Set Password
+              </Button>
+            </form>
+          </div>
+
+          <p className="mt-5 text-center text-xs text-ink-muted">
+            Already have a password?{' '}
+            <a href="/login" className="text-neon-pink hover:underline font-bold">
+              Sign In
+            </a>
+          </p>
         </div>
       </motion.div>
     </div>

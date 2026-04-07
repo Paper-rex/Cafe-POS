@@ -4,7 +4,8 @@ import prisma from '../lib/prisma.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
 import { sessionRequired } from '../middleware/sessionRequired.js';
-import { ORDER_STATUS_TRANSITIONS, ITEM_STATUS_TRANSITIONS, ORDER_PREFIX } from '../lib/constants.js';
+import { ORDER_STATUS_TRANSITIONS, ITEM_STATUS_TRANSITIONS } from '../lib/constants.js';
+import { withUniqueOrderNumber } from '../lib/order-number.js';
 import sseService from '../services/sse.service.js';
 import '../types/index.js';
 
@@ -76,12 +77,6 @@ router.post('/', authorize('WAITER', 'ADMIN'), sessionRequired, async (req: Requ
       return;
     }
 
-    // Generate order number
-    const orderCount = await prisma.order.count({
-      where: { sessionId: req.activeSession!.id },
-    });
-    const orderNumber = `${ORDER_PREFIX}-${String(orderCount + 1).padStart(4, '0')}`;
-
     // Fetch products to snapshot prices
     const productIds = items.map((i: any) => i.productId);
     const products = await prisma.product.findMany({
@@ -128,22 +123,24 @@ router.post('/', authorize('WAITER', 'ADMIN'), sessionRequired, async (req: Requ
       };
     });
 
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        tableId,
-        waiterId: req.user!.userId,
-        sessionId: req.activeSession!.id,
-        branchId: req.activeSession!.branchId,
-        notes,
-        items: { create: orderItems },
-      },
-      include: {
-        items: true,
-        table: { select: { id: true, number: true } },
-        waiter: { select: { id: true, name: true } },
-      },
-    });
+    const order = await withUniqueOrderNumber((orderNumber) =>
+      prisma.order.create({
+        data: {
+          orderNumber,
+          tableId,
+          waiterId: req.user!.userId,
+          sessionId: req.activeSession!.id,
+          branchId: req.activeSession!.branchId,
+          notes,
+          items: { create: orderItems },
+        },
+        include: {
+          items: true,
+          table: { select: { id: true, number: true } },
+          waiter: { select: { id: true, name: true } },
+        },
+      })
+    );
 
     // Broadcast to kitchen and cashier
     sseService.broadcast('order:created', { order }, {
@@ -316,6 +313,93 @@ router.patch('/:id/items/status', async (req: Request, res: Response) => {
     res.json({ success: true, orderStatus: order?.status });
   } catch (error) {
     console.error('Update item status error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PATCH /api/orders/:id/transfer — Transfer order to another table
+router.patch('/:id/transfer', authorize('WAITER', 'ADMIN'), async (req: Request, res: Response) => {
+  try {
+    const { newTableId } = req.body;
+    const orderId = req.params.id as string;
+
+    if (!newTableId) {
+      res.status(400).json({ error: 'newTableId is required' });
+      return;
+    }
+
+    // Start transaction to ensure atomicity
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Get the order and current items
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: { table: true },
+      });
+
+      if (!order) throw Object.assign(new Error('Order not found'), { status: 404 });
+      if (['PAID', 'CANCELLED'].includes(order.status)) {
+        throw Object.assign(new Error('Cannot transfer a completed or cancelled order'), { status: 400 });
+      }
+
+      // 2. Verify new table exists and is not occupied
+      const newTable = await tx.table.findUnique({
+        where: { id: newTableId },
+      });
+
+      if (!newTable) throw Object.assign(new Error('Target table not found'), { status: 404 });
+      if (!newTable.isActive) throw Object.assign(new Error('Target table is inactive'), { status: 400 });
+
+      const occupied = await tx.order.findFirst({
+        where: {
+          tableId: newTableId,
+          status: { notIn: ['PAID', 'CANCELLED'] },
+          id: { not: orderId }, // Just in case
+        },
+      });
+
+      if (occupied) {
+        throw Object.assign(new Error(`Table T${newTable.number} is already occupied`), { status: 409 });
+      }
+
+      // 3. Perform transfer
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: { tableId: newTableId },
+        include: {
+          items: true,
+          table: { select: { id: true, number: true } },
+          waiter: { select: { id: true, name: true } },
+        },
+      });
+
+      return { updatedOrder, oldTableId: order.tableId, oldTableNumber: order.table.number };
+    });
+
+    // 4. Broadcast updates
+    sseService.broadcast('order:transferred', {
+      orderId: result.updatedOrder.id,
+      oldTableId: result.oldTableId,
+      newTableId: newTableId,
+      order: result.updatedOrder,
+    });
+
+    sseService.broadcast('floor:table_updated', {
+      tableId: result.oldTableId,
+      isOccupied: false,
+    });
+
+    sseService.broadcast('floor:table_updated', {
+      tableId: newTableId,
+      isOccupied: true,
+    });
+
+    res.json(result.updatedOrder);
+  } catch (error: any) {
+    if (error.status) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    console.error('Transfer order error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
